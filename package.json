@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsx watch core/handler.ts",
+    "start": "node dist/core/server.js",
+    "dev": "tsx watch core/server.ts",
     "test": "node --test",
     "validate:configs": "tsx core/config/loader.ts --validate-all"
   },

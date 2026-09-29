@@ -2,6 +2,7 @@
  * WhatsApp Cloud API channel adapter (Meta, direct; no BSP).
  * Same code for every vertical. See BUILD.md section 4.
  */
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface InboundMessage {
   /** The customer's WhatsApp phone (E.164). */
@@ -25,6 +26,21 @@ export function verifyWebhook(query: {
     return query["hub.challenge"] ?? "";
   }
   return null;
+}
+
+/**
+ * Verify Meta's X-Hub-Signature-256 over the exact raw request body.
+ * Uses the app secret (not the access token). Returns false on any mismatch.
+ */
+export function verifySignature(rawBody: string, signatureHeader: string | undefined): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret) throw new Error("WHATSAPP_APP_SECRET must be set");
+  if (!signatureHeader?.startsWith("sha256=")) return false;
+
+  const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
+  const a = Buffer.from(signatureHeader);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 /** Parse a Meta webhook payload into InboundMessages (text only for now). */

@@ -54,6 +54,12 @@ create table if not exists engagements (   -- appointments AND reservations
   created_at timestamptz default now()
 );
 
+create table if not exists processed_messages (   -- inbound dedupe (Meta re-delivers)
+  provider_message_id text primary key,
+  business_id uuid references businesses(id),
+  processed_at timestamptz default now()
+);
+
 -- Helpful indexes for the scheduled workflows (reminders, follow-up, reactivation).
 create index if not exists idx_engagements_business_starts
   on engagements (business_id, starts_at);

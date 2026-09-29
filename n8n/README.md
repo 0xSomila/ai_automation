@@ -1,19 +1,23 @@
 # n8n workflows
 
-Self-hosted n8n (Docker) orchestrates the channel and the scheduled workflows.
+Self-hosted / cloud n8n orchestrates the channel and the scheduled workflows.
+Read `ARCHITECTURE.md` for how n8n and the Core fit together.
 
-The n8n MCP connector is currently down, so build and import these via the n8n
-UI or REST API. Each file here is an export skeleton: import it, wire the
-credentials (Supabase, WhatsApp, the webhook secret), then re-export over the
-file so the repo stays the source of truth.
+Built workflows are kept as n8n Workflow SDK source (`*.workflow.ts`), the source
+of truth, and deployed to n8n via the n8n MCP. Not-yet-built ones remain as JSON
+skeletons: build them in the SDK, then replace the skeleton with a `.workflow.ts`.
 
-| File | Trigger | Does |
-| --- | --- | --- |
-| `inbound.json` | WhatsApp webhook | Verifies the signature, parses the message, calls the Core handler. |
-| `reminders.json` | Schedule (hourly) | Finds engagements starting soon with no `reminder_sent_at`, sends the reminder, stamps it. |
-| `followup.json` | Schedule (daily) | Finds completed engagements with no `followup_sent_at`, sends the follow-up, stamps it. |
-| `reactivation.json` | Schedule (weekly) | Finds lapsed customers, sends the reactivation template. |
-| `waitlist.json` | Schedule / event | On a cancellation, releases the slot to the next waitlisted customer. |
+| Source | Trigger | Status | Does |
+| --- | --- | --- | --- |
+| `inbound.workflow.ts` | WhatsApp webhook | Built (n8n id `M8LcXtQ3X8YXzzi1`) | GET verify handshake; POST acks 200 then forwards raw body + signature to Core `/inbound`. |
+| `reminders.json` | Schedule (hourly) | Skeleton | Call Core `/cron/reminders`. |
+| `followup.json` | Schedule (daily) | Skeleton | Call Core `/cron/followup`. |
+| `reactivation.json` | Schedule (weekly) | Skeleton | Call Core `/cron/reactivation`. |
+| `waitlist.json` | Schedule (~15 min) | Skeleton | Call Core `/cron/waitlist` (safety net; primary release is in-process). |
+
+Before the inbound workflow goes live, configure in n8n: `$env.CORE_BASE_URL`,
+`$env.WHATSAPP_VERIFY_TOKEN`, and the `C7 Core Shared Secret` credential
+(httpTemplatedCustomAuth, header `X-C7-Secret` = `N8N_WEBHOOK_SECRET`). Then publish.
 
 All times are `Africa/Johannesburg`. Store UTC, present local. Never commit real
-credentials in these exports; n8n credential references only.
+credentials; n8n credential references only.

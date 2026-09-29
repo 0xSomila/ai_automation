@@ -18,6 +18,7 @@ import { runTurn, type Turn } from "./brain/claude.js";
 import type { ToolContext } from "./brain/tools.js";
 import {
   appendMessage,
+  claimMessage,
   findBusinessByChannel,
   getOrOpenConversation,
   recentMessages,
@@ -36,6 +37,13 @@ export async function handleInbound(msg: InboundMessage): Promise<void> {
   const business = await findBusinessByChannel(msg.phoneNumberId);
   if (!business) {
     console.error("No business for phoneNumberId", msg.phoneNumberId);
+    return;
+  }
+
+  // Dedupe: Meta re-delivers. Process each provider message id at most once.
+  const fresh = await claimMessage(msg.messageId, business.id);
+  if (!fresh) {
+    console.log("Skipping already-processed message", msg.messageId);
     return;
   }
 

@@ -106,6 +106,24 @@ export async function appendMessage(
   if (error) throw error;
 }
 
+/**
+ * Claim a provider message id for processing. Returns true if this is the first
+ * time we have seen it (safe to process), false if it was already handled.
+ * The primary-key conflict is the idempotency guard against Meta re-delivery.
+ */
+export async function claimMessage(
+  providerMessageId: string,
+  businessId: string,
+): Promise<boolean> {
+  const { error } = await db()
+    .from("processed_messages")
+    .insert({ provider_message_id: providerMessageId, business_id: businessId });
+  if (!error) return true;
+  // 23505 = unique_violation: already processed.
+  if ((error as { code?: string }).code === "23505") return false;
+  throw error;
+}
+
 export async function recentMessages(
   conversationId: string,
   limit = 20,
