@@ -1,0 +1,10 @@
+{
+  "name": "books with a specific stylist on the per-staff model",
+  "vertical": "salon",
+  "client": "_stub_salon",
+  "turns": [
+    { "customer": "Hi, can I book a cut and colour with Lerato?" },
+    { "customer": "Saturday if she has anything", "expectTool": "check_availability", "expectReply": ["Lerato"] },
+    { "customer": "11am works, thanks. It's for Naledi.", "expectTool": "create_booking", "expectReply": ["reference", "Lerato", "Saturday"] }
+  ]
+}

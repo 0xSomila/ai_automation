@@ -1,0 +1,30 @@
+{
+  "name": "c7-automation-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "C7 Automation OS: one WhatsApp-first AI receptionist engine, many verticals.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch core/handler.ts",
+    "test": "node --test",
+    "validate:configs": "tsx core/config/loader.ts --validate-all"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "googleapis": "^144.0.0",
+    "luxon": "^3.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.0",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

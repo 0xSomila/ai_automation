@@ -1,0 +1,31 @@
+{
+  "slug": "",
+  "vertical": "practitioner",
+  "name": "",
+  "location": "",
+  "timezone": "Africa/Johannesburg",
+  "channelPhoneId": "",
+  "hours": {
+    "mon": [{ "open": "09:00", "close": "17:00" }],
+    "tue": [{ "open": "09:00", "close": "17:00" }],
+    "wed": [{ "open": "09:00", "close": "17:00" }],
+    "thu": [{ "open": "09:00", "close": "17:00" }],
+    "fri": [{ "open": "09:00", "close": "17:00" }]
+  },
+  "services": [
+    { "name": "", "durationMin": 30, "priceZar": 0 }
+  ],
+  "resources": [
+    { "id": "r1", "name": "", "kind": "practitioner", "capacity": 1 }
+  ],
+  "policies": {
+    "cancellation": ""
+  },
+  "booking": {
+    "backend": "google_calendar",
+    "config": {
+      "calendarId": "",
+      "serviceAccountJson": ""
+    }
+  }
+}

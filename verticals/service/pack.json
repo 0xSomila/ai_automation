@@ -1,0 +1,11 @@
+{
+  "vertical": "service",
+  "intents": ["faq", "qualify", "capture_lead", "book", "reschedule", "cancel"],
+  "tools": ["answer_faq", "qualify", "capture_lead", "check_availability", "create_booking", "reschedule", "cancel"],
+  "entities": {
+    "booking": { "required": ["name", "service", "date", "time"], "optional": ["address", "quoteNeeded"] }
+  },
+  "resourceModel": { "kind": "single", "capacityPerSlot": 1 },
+  "templates": ["appointment_reminder", "appointment_followup", "reactivation"],
+  "promptFragment": "prompt.md"
+}

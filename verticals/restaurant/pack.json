@@ -1,0 +1,12 @@
+{
+  "vertical": "restaurant",
+  "intents": ["faq", "reserve", "modify_reservation", "cancel", "catering_enquiry", "event_enquiry", "take_order", "capture_lead"],
+  "tools": ["answer_faq", "qualify", "check_availability", "create_booking", "reschedule", "cancel", "join_waitlist", "take_order", "capture_lead"],
+  "entities": {
+    "reservation": { "required": ["name", "date", "time", "party"], "optional": ["seatingPreference", "occasion"] },
+    "order": { "required": ["lines"], "optional": ["pickupAt"] }
+  },
+  "resourceModel": { "kind": "covers" },
+  "templates": ["reservation_reminder", "reservation_followup", "event_enquiry_ack"],
+  "promptFragment": "prompt.md"
+}

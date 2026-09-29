@@ -1,0 +1,11 @@
+{
+  "vertical": "practitioner",
+  "intents": ["faq", "qualify", "book", "reschedule", "cancel", "reactivate"],
+  "tools": ["answer_faq", "qualify", "check_availability", "create_booking", "reschedule", "cancel"],
+  "entities": {
+    "booking": { "required": ["name", "service", "date", "time"], "optional": ["firstVisit"] }
+  },
+  "resourceModel": { "kind": "single", "capacityPerSlot": 1 },
+  "templates": ["appointment_reminder", "appointment_followup", "reactivation"],
+  "promptFragment": "prompt.md"
+}

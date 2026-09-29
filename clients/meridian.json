@@ -1,0 +1,35 @@
+{
+  "slug": "meridian",
+  "vertical": "practitioner",
+  "name": "Meridian Physiotherapy",
+  "location": "Johannesburg",
+  "timezone": "Africa/Johannesburg",
+  "channelPhoneId": "REPLACE_WITH_WHATSAPP_PHONE_NUMBER_ID",
+  "hours": {
+    "mon": [{ "open": "08:00", "close": "17:00" }],
+    "tue": [{ "open": "08:00", "close": "17:00" }],
+    "wed": [{ "open": "08:00", "close": "17:00" }],
+    "thu": [{ "open": "08:00", "close": "17:00" }],
+    "fri": [{ "open": "08:00", "close": "15:00" }]
+  },
+  "services": [
+    { "name": "Initial consultation", "durationMin": 45, "priceZar": 650 },
+    { "name": "Follow-up session", "durationMin": 30, "priceZar": 480 },
+    { "name": "Dry needling", "durationMin": 30, "priceZar": 520 }
+  ],
+  "resources": [
+    { "id": "prac1", "name": "Lead physiotherapist", "kind": "practitioner", "capacity": 1 }
+  ],
+  "policies": {
+    "cancellation": "Please give at least 24 hours notice to cancel or reschedule, or the session may be charged.",
+    "medicalAid": "We are a cash practice and provide an invoice you can submit to your medical aid.",
+    "referral": "No referral is needed for a first visit."
+  },
+  "booking": {
+    "backend": "google_calendar",
+    "config": {
+      "calendarId": "REPLACE_WITH_CALENDAR_ID",
+      "serviceAccountJson": "SET_VIA_ENV_GOOGLE_SERVICE_ACCOUNT_JSON"
+    }
+  }
+}

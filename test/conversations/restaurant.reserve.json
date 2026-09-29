@@ -1,0 +1,10 @@
+{
+  "name": "reserves a table for six on the covers model",
+  "vertical": "restaurant",
+  "client": "_stub_restaurant",
+  "turns": [
+    { "customer": "Do you have space for dinner on Friday?" },
+    { "customer": "A table for six please", "expectTool": "check_availability" },
+    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "create_booking", "expectReply": ["six", "Friday"] }
+  ]
+}

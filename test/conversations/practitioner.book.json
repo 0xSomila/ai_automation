@@ -1,0 +1,10 @@
+{
+  "name": "books an initial consultation and gets a reference",
+  "vertical": "practitioner",
+  "client": "meridian",
+  "turns": [
+    { "customer": "Hi, are you taking new patients?" },
+    { "customer": "I have lower back pain, I'd like a first appointment this week", "expectTool": "check_availability" },
+    { "customer": "Tuesday morning works for me. My name is Thandi.", "expectTool": "create_booking", "expectReply": ["reference", "Tuesday"] }
+  ]
+}
