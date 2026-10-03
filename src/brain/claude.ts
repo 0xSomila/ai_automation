@@ -11,6 +11,12 @@ const MAX_ROUNDS = Number(process.env.MAX_TOOL_ROUNDS || 4);
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
+// Optional observation hooks. Production passes none; the test runner passes
+// onToolUse to assert which tools fired on a turn.
+export interface BrainHooks {
+  onToolUse?: (name: string, input: unknown) => void;
+}
+
 export interface BrainInput {
   config: Config;
   pack: Pack;
@@ -20,6 +26,7 @@ export interface BrainInput {
   customerId: string;
   conversationId: string;
   userText: string;
+  hooks?: BrainHooks;
 }
 
 // One inbound message to one reply. Persists both sides. Runs the tool
@@ -50,7 +57,13 @@ export async function runBrain(inp: BrainInput): Promise<string> {
   }));
 
   let finalText = "";
+  let inTokens = 0;
+  let outTokens = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
+  let rounds = 0;
   for (let round = 0; round <= MAX_ROUNDS; round++) {
+    rounds = round + 1;
     const resp = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,
@@ -58,6 +71,11 @@ export async function runBrain(inp: BrainInput): Promise<string> {
       messages,
       tools,
     });
+
+    inTokens += resp.usage.input_tokens;
+    outTokens += resp.usage.output_tokens;
+    cacheRead += resp.usage.cache_read_input_tokens ?? 0;
+    cacheWrite += resp.usage.cache_creation_input_tokens ?? 0;
 
     const toolUses = resp.content.filter(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
@@ -76,6 +94,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
     messages.push({ role: "assistant", content: resp.content });
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const tu of toolUses) {
+      inp.hooks?.onToolUse?.(tu.name, tu.input);
       const out = await executeTool(tu.name, tu.input as Record<string, unknown>, ctx);
       results.push({ type: "tool_result", tool_use_id: tu.id, content: out });
     }
@@ -84,5 +103,12 @@ export async function runBrain(inp: BrainInput): Promise<string> {
 
   if (!finalText) finalText = "Sorry, could you say that again?";
   await inp.store.appendMessage(inp.conversationId, { role: "assistant", content: finalText });
+
+  // Log token usage per handled message (CLAUDE.md rule).
+  const conv = inp.conversationId.slice(0, 8);
+  console.error(
+    `[tokens] conv=${conv} rounds=${rounds} in=${inTokens} out=${outTokens} cacheRead=${cacheRead} cacheWrite=${cacheWrite}`,
+  );
+
   return finalText;
 }

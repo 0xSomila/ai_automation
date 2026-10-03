@@ -1,6 +1,6 @@
 import { loadConfig } from "./config/load";
 import { loadPack } from "./brain/pack";
-import { runBrain } from "./brain/claude";
+import { runBrain, type BrainHooks } from "./brain/claude";
 import type { Store } from "./db/types";
 import type { BookingBackend } from "./booking/adapter";
 
@@ -10,10 +10,12 @@ export interface Deps {
 }
 
 // One inbound message, resolved to a reply string. The caller (chat
-// harness or WhatsApp webhook) decides how to deliver it.
+// harness or WhatsApp webhook) decides how to deliver it. `hooks` is optional
+// observation (the test runner uses it to assert tool calls); production omits it.
 export async function handleMessage(
   deps: Deps,
   args: { businessSlug: string; from: string; text: string },
+  hooks?: BrainHooks,
 ): Promise<string> {
   const config = loadConfig(args.businessSlug);
   const pack = loadPack(config.vertical);
@@ -31,5 +33,6 @@ export async function handleMessage(
     customerId: customer.id,
     conversationId,
     userText: args.text,
+    hooks,
   });
 }

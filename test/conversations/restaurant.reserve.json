@@ -2,6 +2,8 @@
   "name": "reserves a table for six on the covers model",
   "vertical": "restaurant",
   "client": "_stub_restaurant",
+  "pending": true,
+  "pendingReason": "covers-based availability and a restaurant client config not built yet (Phase 6)",
   "turns": [
     { "customer": "Do you have space for dinner on Friday?" },
     { "customer": "A table for six please", "expectTool": "check_availability" },

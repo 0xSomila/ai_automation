@@ -23,11 +23,25 @@ Case shape:
 ```
 
 `expectTool` asserts the brain called that tool on that turn. `expectReply`
-asserts the reply contains each string. Keep assertions about behaviour, not exact
-wording. Tools in the current build: `check_availability`, `book_appointment`.
+asserts the reply contains each string (case-insensitive). Keep assertions about
+behaviour, not exact wording. Tools in the current build: `check_availability`,
+`book_appointment`.
 
-These are target specs, not all passing yet. The restaurant (covers) and salon
-(per-staff) cases assume resource-model overrides that are noted as pending in those
-packs; the generic service pack has no lead-capture tool yet. A small runner that
-drives these against the handler with a deterministic in-memory backend is the next
-testing step.
+## Running
+
+```bash
+npm run test:conversations          # run active cases (needs ANTHROPIC_API_KEY)
+npm run test:conversations -- --dry # parse and list cases, no API calls
+```
+
+The runner (`test/run.ts`) drives each case through the handler with fresh in-memory
+Store and BookingBackend adapters, one conversation per case. It exits non-zero on any
+active failure.
+
+## Pending cases
+
+A case with `"pending": true` (and a `pendingReason`) is skipped and reported, not run.
+The restaurant (covers) and salon (per-staff) cases need resource-model overrides, and
+the service case needs a lead-capture tool; all three also need their client configs.
+They become active in Phases 5 and 6. The practitioner case (`meridian`) is the active
+gate for Phase 1.

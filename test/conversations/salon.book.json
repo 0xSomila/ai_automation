@@ -2,6 +2,8 @@
   "name": "books with a specific stylist on the per-staff model",
   "vertical": "salon",
   "client": "_stub_salon",
+  "pending": true,
+  "pendingReason": "per-staff availability and a salon client config not built yet (Phase 6)",
   "turns": [
     { "customer": "Hi, can I book a cut and colour with Lerato?" },
     { "customer": "Saturday if she has anything", "expectTool": "check_availability", "expectReply": ["Lerato"] },
