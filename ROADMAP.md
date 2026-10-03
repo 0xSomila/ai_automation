@@ -53,7 +53,7 @@ templates live.
 
 ---
 
-## Phase 3 — Production data and calendar
+## Phase 3 — Production data and calendar — CODE DONE (multi-tenant routing + calendar backend hardened; live verification pending a Supabase project and a Google service account)
 
 **Goal:** swap dev adapters for real ones, no brain changes (that is the point of the interfaces).
 

@@ -4,6 +4,7 @@ import { handleMessage, type Deps } from "./handler";
 import { MemoryStore } from "./db/memory";
 import { MemoryBackend } from "./booking/memory";
 import { parseInbound, sendText, verifySignature } from "./channel/whatsapp";
+import { resolveBusinessByPhoneNumberId } from "./config/load";
 import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier";
 import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron";
 
@@ -62,13 +63,16 @@ app.post("/webhook", async (req, res) => {
     if (!inbound) return;
     const deps = await buildDeps();
 
+    // Multi-tenant: route by the number the message arrived on, falling back to
+    // the default client when the number is not mapped to a config.
+    const slug = resolveBusinessByPhoneNumberId(inbound.phoneNumberId) ?? DEFAULT_SLUG;
+
     // Dedupe: Meta re-delivers. Process each provider message id at most once.
-    const businessId = DEFAULT_SLUG; // TODO multi-tenant: resolve by inbound.phoneNumberId
-    const fresh = await deps.store.claimMessage(businessId, inbound.messageId);
+    const fresh = await deps.store.claimMessage(slug, inbound.messageId);
     if (!fresh) return;
 
     const reply = await handleMessage(deps, {
-      businessSlug: DEFAULT_SLUG,
+      businessSlug: slug,
       from: inbound.from,
       text: inbound.text,
     });
