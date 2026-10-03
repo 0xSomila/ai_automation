@@ -2,10 +2,12 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { Config } from "../config/types";
 import type { BookingBackend } from "../booking/adapter";
 import type { Store } from "../db/types";
-import { computeOpenSlots } from "../booking/availability";
+import type { Pack } from "./pack";
+import { computeOpenSlots, computeCoversSlots } from "../booking/availability";
 
 export interface ToolCtx {
   config: Config;
+  pack: Pack;
   backend: BookingBackend;
   store: Store;
   businessId: string;
@@ -17,17 +19,20 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
   check_availability: {
     name: "check_availability",
     description:
-      "Returns the open appointment times for one date. Call before offering or confirming any times. Returns the open HH:MM list, or a note if closed or full.",
+      "Returns the open times for one date. Call before offering or confirming any times. For a restaurant, pass the party size. Returns the open HH:MM list, or a note if closed or full.",
     input_schema: {
       type: "object",
-      properties: { date: { type: "string", description: "Date as YYYY-MM-DD" } },
+      properties: {
+        date: { type: "string", description: "Date as YYYY-MM-DD" },
+        party: { type: "integer", description: "Party size, for table reservations" },
+      },
       required: ["date"],
     },
   },
   book_appointment: {
     name: "book_appointment",
     description:
-      "Books an appointment after you have the customer name, service, date and an open time. Returns a confirmation reference, or an unavailable status if the time was taken.",
+      "Books an appointment or table after you have the customer name, the date and an open time (and the party size for a restaurant). Returns a confirmation reference, or an unavailable status if the time was taken.",
     input_schema: {
       type: "object",
       properties: {
@@ -35,8 +40,9 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
         service: { type: "string" },
         date: { type: "string", description: "YYYY-MM-DD" },
         time: { type: "string", description: "HH:MM" },
+        party: { type: "integer", description: "Party size, for table reservations" },
       },
-      required: ["name", "service", "date", "time"],
+      required: ["name", "date", "time"],
     },
   },
   reschedule_appointment: {
@@ -79,6 +85,11 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
   },
 };
 
+function toParty(raw: unknown): number {
+  const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 function resolveService(ctx: ToolCtx, service: string) {
   return (
     ctx.config.services.find((s) => s.name.toLowerCase() === service.toLowerCase()) ??
@@ -97,18 +108,27 @@ export async function executeTool(
   input: Record<string, unknown>,
   ctx: ToolCtx,
 ): Promise<string> {
+  const isCovers = ctx.pack.resourceModel.kind === "covers";
+
   if (name === "check_availability") {
     const date = String(input.date ?? "").trim();
-    const busy = await ctx.backend.getBusy(date);
-    const open = computeOpenSlots(ctx.config, date, busy);
+    const party = toParty(input.party);
+
+    const open = isCovers
+      ? computeCoversSlots(ctx.config, date, await ctx.store.reservationsOn(ctx.businessId, date), party)
+      : computeOpenSlots(ctx.config, date, await ctx.backend.getBusy(date));
+
     if (open.length === 0) {
       return JSON.stringify({
         date,
+        party,
         open: [],
-        note: "Closed or fully booked that day. Offer another day.",
+        note: isCovers
+          ? "No tables for that party that day. Offer another day or the waitlist."
+          : "Closed or fully booked that day. Offer another day.",
       });
     }
-    return JSON.stringify({ date, open });
+    return JSON.stringify({ date, party, open });
   }
 
   if (name === "book_appointment") {
@@ -116,8 +136,43 @@ export async function executeTool(
     const time = String(input.time ?? "").trim();
     const name_ = String(input.name ?? "").trim();
     const service = String(input.service ?? "").trim();
+    const party = toParty(input.party);
 
-    // Re-validate against live availability. Never trust the model.
+    if (isCovers) {
+      const limit = ctx.config.partySizeLimit;
+      if (limit && party > limit) {
+        return JSON.stringify({
+          status: "party_too_large",
+          message: `Parties over ${limit} are handled as an event enquiry. Capture the details for the team.`,
+        });
+      }
+      // Re-validate covers for this party against live reservations.
+      const reservations = await ctx.store.reservationsOn(ctx.businessId, date);
+      const open = computeCoversSlots(ctx.config, date, reservations, party);
+      if (!open.includes(time)) {
+        return JSON.stringify({
+          status: "unavailable",
+          message: "That time has no table for this party. Call check_availability and offer a listed time.",
+        });
+      }
+      const durationMin = resolveService(ctx, service)?.durationMin ?? ctx.config.booking.slotStepMin;
+      const reference = "C7-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      await ctx.store.createEngagement({
+        businessId: ctx.businessId,
+        customerId: ctx.customerId,
+        kind: "reservation",
+        service: service || undefined,
+        resource: "table",
+        party,
+        startsAt: `${date}T${time}:00`,
+        durationMin,
+        status: "confirmed",
+        reference,
+      });
+      return JSON.stringify({ status: "confirmed", reference, name: name_, party, date, time });
+    }
+
+    // Single / per-staff: calendar-backed slot booking.
     const busy = await ctx.backend.getBusy(date);
     const open = computeOpenSlots(ctx.config, date, busy);
     if (!open.includes(time)) {

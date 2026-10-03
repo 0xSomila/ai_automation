@@ -7,6 +7,7 @@ import type {
   DueWaitlist,
   Engagement,
   Message,
+  ReservationLoad,
   Store,
 } from "./types";
 
@@ -188,5 +189,17 @@ export class MemoryStore implements Store {
   async markWaitlistNotified(engagementId: string, atISO: string): Promise<void> {
     const e = this.engagements.find((x) => x.id === engagementId);
     if (e) e.waitlistNotifiedAt = atISO;
+  }
+
+  async reservationsOn(businessId: string, dateISO: string): Promise<ReservationLoad[]> {
+    return this.engagements
+      .filter(
+        (e) =>
+          e.businessId === businessId &&
+          e.kind === "reservation" &&
+          e.status === "confirmed" &&
+          e.startsAt?.startsWith(dateISO),
+      )
+      .map((e) => ({ startsAt: e.startsAt!, party: e.party ?? 1, durationMin: e.durationMin }));
   }
 }

@@ -16,6 +16,8 @@ export interface Engagement {
   customerId: string;
   kind: "appointment" | "reservation" | "order" | "lead";
   service?: string;
+  resource?: string;
+  party?: number;
   startsAt?: string;
   durationMin?: number;
   status: "confirmed" | "cancelled" | "completed" | "no_show" | "waitlist";
@@ -91,4 +93,13 @@ export interface Store {
   // Waitlist: entries not yet notified, for the safety-net scan.
   openWaitlist(nowISO: string): Promise<DueWaitlist[]>;
   markWaitlistNotified(engagementId: string, atISO: string): Promise<void>;
+
+  // Covers resource model: confirmed reservations on a date, to sum against capacity.
+  reservationsOn(businessId: string, dateISO: string): Promise<ReservationLoad[]>;
+}
+
+export interface ReservationLoad {
+  startsAt: string;
+  party: number;
+  durationMin?: number;
 }

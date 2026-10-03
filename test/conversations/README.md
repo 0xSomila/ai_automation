@@ -41,7 +41,5 @@ active failure.
 ## Pending cases
 
 A case with `"pending": true` (and a `pendingReason`) is skipped and reported, not run.
-The restaurant (covers) and salon (per-staff) cases need resource-model overrides, and
-the service case needs a lead-capture tool; all three also need their client configs.
-They become active in Phases 5 and 6. The practitioner case (`meridian`) is the active
-gate for Phase 1.
+Active: practitioner (`meridian`, single) and restaurant (`harbour`, covers). Pending: salon
+(per-staff availability not built) and service (no lead-capture tool yet).

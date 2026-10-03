@@ -2,11 +2,17 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
+export interface ResourceModel {
+  kind: "single" | "per_staff" | "covers";
+  capacityPerSlot?: number;
+}
+
 export interface Pack {
   vertical: string;
   intents: string[];
   tools: string[];
   templates: string[];
+  resourceModel: ResourceModel;
   promptFragment: string; // resolved text of prompt.md
 }
 
@@ -22,6 +28,7 @@ export function loadPack(vertical: string): Pack {
     intents: meta.intents ?? [],
     tools: meta.tools ?? [],
     templates: meta.templates ?? [],
+    resourceModel: meta.resourceModel ?? { kind: "single" },
     promptFragment,
   };
 }

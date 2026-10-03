@@ -99,7 +99,7 @@ and the `engagements` table, and availability reflects real busy times.
 
 ---
 
-## Phase 6 — Second vertical (restaurant or salon, whichever has a live prospect)
+## Phase 6 — Second vertical (restaurant or salon, whichever has a live prospect) — DONE for restaurant/covers (capacity-based availability, party limit, Harbour Table config; test:covers green). Salon/per-staff still pending.
 
 **Goal:** prove the platform claim: a new vertical is a pack, not a new app.
 

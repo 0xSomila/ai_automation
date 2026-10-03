@@ -7,6 +7,7 @@ import type {
   DueWaitlist,
   Engagement,
   Message,
+  ReservationLoad,
   Store,
 } from "./types";
 
@@ -94,6 +95,8 @@ export class SupabaseStore implements Store {
         customer_id: e.customerId,
         kind: e.kind,
         service: e.service,
+        resource: e.resource,
+        party: e.party,
         starts_at: e.startsAt,
         duration_min: e.durationMin,
         status: e.status,
@@ -275,5 +278,23 @@ export class SupabaseStore implements Store {
       .update({ waitlist_notified_at: atISO })
       .eq("id", engagementId);
     if (error) throw error;
+  }
+
+  async reservationsOn(businessId: string, dateISO: string): Promise<ReservationLoad[]> {
+    const dayEnd = new Date(Date.parse(`${dateISO}T00:00:00`) + 864e5).toISOString();
+    const { data, error } = await this.db
+      .from("engagements")
+      .select("starts_at, party, duration_min")
+      .eq("business_id", businessId)
+      .eq("kind", "reservation")
+      .eq("status", "confirmed")
+      .gte("starts_at", `${dateISO}T00:00:00`)
+      .lt("starts_at", dayEnd);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      startsAt: r.starts_at,
+      party: r.party ?? 1,
+      durationMin: r.duration_min ?? undefined,
+    }));
   }
 }

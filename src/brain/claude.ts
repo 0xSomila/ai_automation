@@ -45,6 +45,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
   const tools = toolDefs(inp.pack.tools);
   const ctx: ToolCtx = {
     config: inp.config,
+    pack: inp.pack,
     backend: inp.backend,
     store: inp.store,
     businessId: inp.businessId,

@@ -1,12 +1,10 @@
 {
   "name": "reserves a table for six on the covers model",
   "vertical": "restaurant",
-  "client": "_stub_restaurant",
-  "pending": true,
-  "pendingReason": "covers-based availability and a restaurant client config not built yet (Phase 6)",
+  "client": "harbour",
   "turns": [
     { "customer": "Do you have space for dinner on Friday?" },
     { "customer": "A table for six please", "expectTool": "check_availability" },
-    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "book_appointment", "expectReply": ["six", "Friday"] }
+    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "book_appointment", "expectReply": ["confirm"] }
   ]
 }

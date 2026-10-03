@@ -29,6 +29,11 @@ export interface Config {
     maxDaysAhead: number;
     reminderHoursBefore?: number; // how far ahead a reminder fires; default 24
   };
+
+  // Covers resource model (restaurant): total seats bookable per slot, and the
+  // largest party the bot may reserve before it becomes an event enquiry.
+  capacity?: number;
+  partySizeLimit?: number;
   voice: {
     language: string;
     currency: string;

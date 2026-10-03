@@ -1,0 +1,33 @@
+{
+  "slug": "harbour",
+  "vertical": "restaurant",
+  "practice": {
+    "name": "Harbour Table",
+    "location": "Kalk Bay, Cape Town",
+    "address": "72 Main Road, Kalk Bay, Cape Town",
+    "parking": "Street parking along Main Road",
+    "timezone": "Africa/Johannesburg"
+  },
+  "hours": {
+    "mon": null,
+    "tue": ["12:00", "21:00"],
+    "wed": ["12:00", "21:00"],
+    "thu": ["12:00", "21:00"],
+    "fri": ["12:00", "22:00"],
+    "sat": ["12:00", "22:00"],
+    "sun": ["12:00", "16:00"]
+  },
+  "services": [
+    { "name": "Table reservation", "durationMin": 90, "priceZar": 0 }
+  ],
+  "capacity": 40,
+  "partySizeLimit": 8,
+  "policies": {
+    "medicalAid": "",
+    "referral": "",
+    "cancellation": "Please let us know by phone if you cannot make your booking."
+  },
+  "booking": { "slotStepMin": 30, "leadTimeHours": 1, "maxDaysAhead": 30, "reminderHoursBefore": 24 },
+  "voice": { "language": "South African English", "currency": "ZAR", "style": "warm, brief, welcoming; no em dashes" },
+  "channels": { "whatsappNumberId": "REPLACE_ME" }
+}

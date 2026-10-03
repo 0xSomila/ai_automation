@@ -17,7 +17,7 @@ const store = new MemoryStore();
 const backend = new MemoryBackend();
 const notifier = new MemoryNotifier();
 const config = loadConfig("meridian");
-loadPack(config.vertical); // validates the pack loads
+const pack = loadPack(config.vertical);
 
 async function call(name: string, input: Record<string, unknown>, ctx: ToolCtx) {
   return JSON.parse(await executeTool(name, input, ctx));
@@ -38,6 +38,7 @@ async function main(): Promise<void> {
   const customer = await store.getOrCreateCustomer("meridian", "+27820001111");
   const ctx: ToolCtx = {
     config,
+    pack,
     backend,
     store,
     businessId: "meridian",
