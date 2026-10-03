@@ -68,7 +68,7 @@ and the `engagements` table, and availability reflects real busy times.
 
 ---
 
-## Phase 4 — Go live with one practitioner (Meridian)
+## Phase 4 — Go live with one practitioner (Meridian) — DEPLOY KIT READY (Dockerfile, check:env preflight, docs/GO-LIVE.md; execution needs the host + Meta accounts)
 
 **Goal:** one real business answering real WhatsApp messages.
 

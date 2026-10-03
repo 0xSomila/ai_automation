@@ -35,6 +35,13 @@ This runs the brain against an in-memory store and an in-memory calendar seeded 
 3. Set `WHATSAPP_*` (including `WHATSAPP_APP_SECRET` for signature checks), point the Meta webhook straight at `/webhook` on your deployed `server.ts`, submit the message templates.
 4. n8n runs the scheduled jobs only: it calls the Core `/cron/*` endpoints (guarded by `N8N_WEBHOOK_SECRET`) on a clock. Inbound messages go direct to `/webhook`; n8n is not in that path. See `n8n/ARCHITECTURE.md`. A standalone n8n inbound front (`n8n/inbound.workflow.ts`) exists as an optional alternative if you want n8n to own the external surface.
 
+### Deploying
+
+The Core ships as a container (`Dockerfile`), run with `npm start` (tsx over the source, so the
+`clients/` and `verticals/` asset paths resolve as in dev). Run `npm run check:env` on the host to
+verify the production environment before cutover. The full go-live steps (host, Meta WhatsApp
+webhook, reminder template, n8n schedule, verification checklist) are in `docs/GO-LIVE.md`.
+
 ## Adding a vertical
 
 Copy `verticals/practitioner/`, change `pack.json` intents and entities, write the `prompt.md` fragment, and add an availability override only if its resource model differs (restaurant uses covers, salon uses per-staff). Do not touch Core.
