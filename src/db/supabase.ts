@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Customer, Engagement, Message, Store } from "./types";
+import type { Customer, DueReminder, Engagement, Message, Store } from "./types";
 
 // Production store. Apply src/db/schema.sql to the project first.
 export class SupabaseStore implements Store {
@@ -93,5 +93,36 @@ export class SupabaseStore implements Store {
     // 23505 = unique_violation: already processed.
     if ((error as { code?: string }).code === "23505") return false;
     throw error;
+  }
+
+  async dueReminders(nowISO: string, windowHours: number): Promise<DueReminder[]> {
+    const until = new Date(Date.parse(nowISO) + windowHours * 36e5).toISOString();
+    const { data, error } = await this.db
+      .from("engagements")
+      .select("id, business_id, service, starts_at, duration_min, customers(wa_phone, name)")
+      .eq("status", "confirmed")
+      .is("reminder_sent_at", null)
+      .gte("starts_at", nowISO)
+      .lte("starts_at", until);
+    if (error) throw error;
+    return (data ?? [])
+      .map((r: any) => ({
+        engagementId: r.id,
+        businessId: r.business_id,
+        customerPhone: r.customers?.wa_phone as string,
+        customerName: r.customers?.name as string | undefined,
+        service: r.service as string | undefined,
+        startsAt: r.starts_at as string,
+        durationMin: r.duration_min as number | undefined,
+      }))
+      .filter((d) => d.customerPhone);
+  }
+
+  async markReminderSent(engagementId: string, atISO: string): Promise<void> {
+    const { error } = await this.db
+      .from("engagements")
+      .update({ reminder_sent_at: atISO })
+      .eq("id", engagementId);
+    if (error) throw error;
   }
 }

@@ -10,7 +10,7 @@ JSON skeleton with a `.workflow.ts`.
 
 | Source | Trigger | Status | Does |
 | --- | --- | --- | --- |
-| `reminders.json` | Schedule (hourly) | Skeleton | Call Core `/cron/reminders`. |
+| `reminders.workflow.ts` | Schedule (hourly) | Built (n8n id `otPtBLVUlBLj59Zs`) | Call Core `/cron/reminders`. |
 | `followup.json` | Schedule (daily) | Skeleton | Call Core `/cron/followup`. |
 | `reactivation.json` | Schedule (weekly) | Skeleton | Call Core `/cron/reactivation`. |
 | `waitlist.json` | Schedule (~15 min) | Skeleton | Call Core `/cron/waitlist` (safety net; primary release is in-process). |

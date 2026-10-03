@@ -6,6 +6,7 @@ export interface Pack {
   vertical: string;
   intents: string[];
   tools: string[];
+  templates: string[];
   promptFragment: string; // resolved text of prompt.md
 }
 
@@ -20,6 +21,7 @@ export function loadPack(vertical: string): Pack {
     vertical: meta.vertical,
     intents: meta.intents ?? [],
     tools: meta.tools ?? [],
+    templates: meta.templates ?? [],
     promptFragment,
   };
 }

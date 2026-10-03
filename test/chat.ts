@@ -2,12 +2,13 @@ import "dotenv/config";
 import readline from "node:readline";
 import { MemoryStore } from "../src/db/memory";
 import { MemoryBackend } from "../src/booking/memory";
+import { MemoryNotifier } from "../src/channel/notifier";
 import { handleMessage } from "../src/handler";
 
 // Terminal chat with the receptionist. Needs only ANTHROPIC_API_KEY.
 // Usage: npm run chat            (defaults to the meridian config)
 //        npm run chat -- salon   (any client slug under clients/)
-const deps = { store: new MemoryStore(), backend: new MemoryBackend() };
+const deps = { store: new MemoryStore(), backend: new MemoryBackend(), notifier: new MemoryNotifier() };
 const slug = process.argv[2] || "meridian";
 const from = "dev-user";
 

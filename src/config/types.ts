@@ -27,6 +27,7 @@ export interface Config {
     slotStepMin: number;
     leadTimeHours: number;
     maxDaysAhead: number;
+    reminderHoursBefore?: number; // how far ahead a reminder fires; default 24
   };
   voice: {
     language: string;

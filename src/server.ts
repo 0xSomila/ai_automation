@@ -4,6 +4,7 @@ import { handleMessage, type Deps } from "./handler";
 import { MemoryStore } from "./db/memory";
 import { MemoryBackend } from "./booking/memory";
 import { parseInbound, sendText, verifySignature } from "./channel/whatsapp";
+import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier";
 import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron";
 
 // Choose real implementations when their env is set, else dev stubs.
@@ -22,7 +23,11 @@ async function buildDeps(): Promise<Deps> {
   } else {
     backend = new MemoryBackend();
   }
-  return { store, backend };
+  const notifier =
+    process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID
+      ? new WhatsAppNotifier()
+      : new MemoryNotifier();
+  return { store, backend, notifier };
 }
 
 const DEFAULT_SLUG = process.env.DEFAULT_CLIENT_SLUG || "meridian";

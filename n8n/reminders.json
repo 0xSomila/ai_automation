@@ -1,8 +1,0 @@
-{
-  "name": "c7-reminders",
-  "nodes": [],
-  "connections": {},
-  "active": false,
-  "settings": { "timezone": "Africa/Johannesburg" },
-  "meta": { "description": "Skeleton export. Build in the n8n UI, then re-export over this file. See n8n/README.md." }
-}

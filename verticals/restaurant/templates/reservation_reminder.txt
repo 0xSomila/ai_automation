@@ -1,0 +1,1 @@
+Hi {{name}}, a reminder of your table at {{business}} on {{date}} at {{time}}. Reply here if your plans change.

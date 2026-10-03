@@ -28,7 +28,7 @@
     "referral": "No referral needed for cash bookings; some medical aids require one.",
     "cancellation": "24 hours notice or the session may be charged."
   },
-  "booking": { "slotStepMin": 30, "leadTimeHours": 2, "maxDaysAhead": 21 },
+  "booking": { "slotStepMin": 30, "leadTimeHours": 2, "maxDaysAhead": 21, "reminderHoursBefore": 24 },
   "voice": { "language": "South African English", "currency": "ZAR", "style": "warm, brief, professional; no em dashes" },
   "channels": { "whatsappNumberId": "REPLACE_ME" }
 }

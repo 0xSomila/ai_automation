@@ -3,10 +3,12 @@ import { loadPack } from "./brain/pack";
 import { runBrain, type BrainHooks } from "./brain/claude";
 import type { Store } from "./db/types";
 import type { BookingBackend } from "./booking/adapter";
+import type { Notifier } from "./channel/notifier";
 
 export interface Deps {
   store: Store;
   backend: BookingBackend;
+  notifier: Notifier;
 }
 
 // One inbound message, resolved to a reply string. The caller (chat

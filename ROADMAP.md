@@ -23,7 +23,7 @@ So the brain books, locally. Nothing is hosted; no real DB, calendar, or WhatsAp
 
 ---
 
-## Phase 1 — Harden the conversation (local, no external services)
+## Phase 1 — Harden the conversation (local, no external services) — DONE (runner + token logging shipped; practitioner case is the live gate)
 
 **Goal:** trust the brain before wiring anything. This is the loop that de-risks everything.
 
@@ -37,7 +37,7 @@ So the brain books, locally. Nothing is hosted; no real DB, calendar, or WhatsAp
 
 ---
 
-## Phase 2 — Reminders end to end (first scheduled job)
+## Phase 2 — Reminders end to end (first scheduled job) — DONE (template layer, runReminders, n8n C7 Reminders schedule; test:reminders green)
 
 **Goal:** the first automation that runs on a clock, and the decision it forces: where message
 templates live.

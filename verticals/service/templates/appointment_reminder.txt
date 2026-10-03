@@ -1,0 +1,1 @@
+Hi {{name}}, a reminder of your {{service}} booking with {{business}} on {{date}} at {{time}}. Reply here if anything changes.

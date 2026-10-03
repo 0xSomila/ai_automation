@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MemoryStore } from "../src/db/memory";
 import { MemoryBackend } from "../src/booking/memory";
+import { MemoryNotifier } from "../src/channel/notifier";
 import { handleMessage } from "../src/handler";
 
 // Runs the scripted conversations in test/conversations/*.json against the
@@ -41,7 +42,7 @@ function loadCases(): { file: string; data: Case }[] {
 
 async function runCase(c: Case): Promise<string[]> {
   const failures: string[] = [];
-  const deps = { store: new MemoryStore(), backend: new MemoryBackend() };
+  const deps = { store: new MemoryStore(), backend: new MemoryBackend(), notifier: new MemoryNotifier() };
   const from = `test-${c.client}`;
 
   for (let i = 0; i < c.turns.length; i++) {

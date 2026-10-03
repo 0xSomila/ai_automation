@@ -25,7 +25,7 @@
     "referral": "",
     "cancellation": ""
   },
-  "booking": { "slotStepMin": 30, "leadTimeHours": 2, "maxDaysAhead": 21 },
+  "booking": { "slotStepMin": 30, "leadTimeHours": 2, "maxDaysAhead": 21, "reminderHoursBefore": 24 },
   "voice": { "language": "South African English", "currency": "ZAR", "style": "warm, brief, professional; no em dashes" },
   "channels": { "whatsappNumberId": "REPLACE_ME" }
 }
