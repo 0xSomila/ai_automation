@@ -4,7 +4,7 @@ The path from where the code is now to a live, multi-client platform. Each phase
 goal, the work, and a clear "done when". Ship phase by phase; do not start a phase before
 its predecessor's "done when" holds.
 
-Delivery cell: Somila (lead), Tshiamo (build), Themba (config and sign-off).
+Delivery cell: Somila (lead, config and sign-off), Tshiamo (build).
 Read `CLAUDE.md` for the rules, `BUILD.md` for the spec, `n8n/ARCHITECTURE.md` for orchestration.
 
 ---
@@ -79,7 +79,7 @@ and the `engagements` table, and availability reflects real busy times.
 - Deploy the n8n `reminders` schedule against the live Core.
 - Run the go-live checklist: verify signature, dedupe, a real booking, and a real reminder.
 
-**Done when:** a real customer can message the number, book, and receive a reminder; Themba signs off.
+**Done when:** a real customer can message the number, book, and receive a reminder; Somila signs off.
 **Needs:** a host, the Meta WhatsApp account, a real (or pilot) client number.
 
 ---
@@ -120,7 +120,7 @@ beyond shared additions. Target: a new pack in days, a new client on an existing
 
 - Config admin (Vercel) to create/edit client configs and seed `businesses` without hand-editing JSON.
 - Observability: per-conversation logs, token spend, delivery/failure dashboards, cron run results.
-- Onboarding runbook so Themba can stand up a client from the template in hours.
+- Onboarding runbook so Somila can stand up a client from the template in hours.
 
 **Done when:** a new client on an existing pack goes live from config alone, no code change.
 

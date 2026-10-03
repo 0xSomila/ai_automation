@@ -1,6 +1,6 @@
 # n8n orchestration architecture
 
-Reference for the delivery cell (Somila lead, Tshiamo build, Themba config and sign-off).
+Reference for the delivery cell (Somila lead, config and sign-off; Tshiamo build).
 Read `../CLAUDE.md` and `../BUILD.md` first. This document says how n8n and the Core fit together.
 
 ## Inbound is direct; n8n runs the schedules

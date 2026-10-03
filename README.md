@@ -2,7 +2,7 @@
 
 AI receptionist for appointment and reservation businesses. One engine, many verticals (practitioner, restaurant, salon, generic service). The model runs on the Claude Messages API with your own key.
 
-Built by Catalyst 7. Delivery cell: Somila (lead), Tshiamo (build), Themba (config and sign-off).
+Built by Catalyst 7. Delivery cell: Somila (lead, config and sign-off), Tshiamo (build).
 
 ## Quick start (talk to it in your terminal, no WhatsApp needed)
 

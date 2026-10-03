@@ -2,7 +2,7 @@
 
 Full build context for C7's AI automation platform. One engine, many verticals. Hand this file to Claude Code as the source of truth. Keep it in the repo root as `BUILD.md`; put the "Working rules" (section 13) in `CLAUDE.md`.
 
-Owner: Catalyst 7. Delivery cell: Somila (lead), Tshiamo (build), Themba (config and sign-off).
+Owner: Catalyst 7. Delivery cell: Somila (lead, config and sign-off), Tshiamo (build).
 
 > **Implementation note (reflects the current repo).** This spec is the north star. The shipped code lives under `src/` (not `core/`); see `README.md` and `CLAUDE.md` for the actual layout. The current build ships two tools, `check_availability` and `book_appointment`, running against swappable store and booking backends (in-memory for dev, Supabase + Google Calendar for prod); the wider tool library in section 7 is the roadmap. Inbound WhatsApp is handled directly by `src/server.ts` `/webhook`; n8n runs the scheduled jobs via `/cron/*` (see `n8n/ARCHITECTURE.md`).
 

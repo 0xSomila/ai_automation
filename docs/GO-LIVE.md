@@ -1,7 +1,7 @@
 # Go-live runbook (Phase 4)
 
-Take one practitioner (Meridian) live on real WhatsApp. Owner: Themba (config and sign-off),
-with Somila on deploy. Read `../BUILD.md` and `../n8n/ARCHITECTURE.md` first.
+Take one practitioner (Meridian) live on real WhatsApp. Owner: Somila (deploy, config and sign-off).
+Read `../BUILD.md` and `../n8n/ARCHITECTURE.md` first.
 
 Inbound goes direct to the Core's `/webhook`; n8n runs the reminders schedule against the
 same Core. Nothing here changes code; it is configuration and deployment.
