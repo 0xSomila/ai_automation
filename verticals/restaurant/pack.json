@@ -1,12 +1,11 @@
 {
   "vertical": "restaurant",
-  "intents": ["faq", "reserve", "modify_reservation", "cancel", "catering_enquiry", "event_enquiry", "take_order", "capture_lead"],
-  "tools": ["answer_faq", "qualify", "check_availability", "create_booking", "reschedule", "cancel", "join_waitlist", "take_order", "capture_lead"],
+  "intents": ["faq", "reserve", "modify_reservation", "cancel", "catering_enquiry", "event_enquiry", "capture_lead"],
+  "tools": ["check_availability", "book_appointment"],
   "entities": {
-    "reservation": { "required": ["name", "date", "time", "party"], "optional": ["seatingPreference", "occasion"] },
-    "order": { "required": ["lines"], "optional": ["pickupAt"] }
+    "reservation": { "required": ["name", "date", "time", "party"], "optional": ["occasion"] }
   },
-  "resourceModel": { "kind": "covers" },
+  "resourceModel": { "kind": "covers", "capacityPerSlot": 40 },
   "templates": ["reservation_reminder", "reservation_followup", "event_enquiry_ack"],
   "promptFragment": "prompt.md"
 }

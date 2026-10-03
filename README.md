@@ -1,53 +1,40 @@
 # C7 Automation OS
 
-One engine, many verticals. A WhatsApp-first AI receptionist platform for appointment and reservation businesses.
+AI receptionist for appointment and reservation businesses. One engine, many verticals (practitioner, restaurant, salon, generic service). The model runs on the Claude Messages API with your own key.
 
 Built by Catalyst 7. Delivery cell: Somila (lead), Tshiamo (build), Themba (config and sign-off).
 
-## The mental model
+## Quick start (talk to it in your terminal, no WhatsApp needed)
 
-Build the **Core** once (channel, brain, state, scheduler). Everything that differs between a physio, a restaurant and a salon lives in a **Vertical Pack**. A live client is a **Vertical Pack + a Client Config**.
-
-- To launch a new vertical you write a pack, not a new app.
-- To onboard a client you write a config, not code.
-
-```
-Core engine
-  |
-  +-- Vertical Pack: practitioner   --> Client Config: Meridian Physiotherapy
-  +-- Vertical Pack: restaurant     --> Client Config: <a cafe>
-  +-- Vertical Pack: salon          --> Client Config: <a salon>
-  +-- Vertical Pack: service        --> Client Config: <a home-service business>
+```bash
+npm install
+cp .env.example .env        # put your ANTHROPIC_API_KEY in
+npm run chat
 ```
 
-## Layers, never mixed
+This runs the brain against an in-memory store and an in-memory calendar seeded from `clients/meridian.json` (a fictional physio practice). Type messages and watch it qualify, check availability and book, running the real tool loop. This is the loop you harden before wiring any channel.
 
-| Layer | Lives in | Changes when |
-| --- | --- | --- |
-| Core (vertical-agnostic) | `core/` | The engine itself changes, once for all verticals |
-| Vertical Pack (per vertical) | `verticals/<name>/` | You add or change how a vertical behaves |
-| Client Config (per business) | `clients/<slug>.json` | You onboard or update a business |
+## What is here
 
-Business data never enters code. Vertical logic never enters a client config.
+- `src/brain/` the Core: `systemPrompt.ts` (built from a client config), `tools.ts` (the two booking tools and their executors), `claude.ts` (the Messages API loop with prompt caching, a model pin and a tool-round cap).
+- `src/booking/` `adapter.ts` (the backend interface), `memory.ts` (dev calendar), `googleCalendar.ts` (production), `availability.ts` (slot computation).
+- `src/db/` `types.ts` (store interface), `memory.ts` (dev), `supabase.ts` (production), `schema.sql`.
+- `src/channel/whatsapp.ts` WhatsApp Cloud API send, receive, and signature verification.
+- `src/db/` also carries inbound dedupe (`claimMessage` + the `processed_messages` table).
+- `src/handler.ts` message in, reply out.
+- `src/server.ts` the WhatsApp webhook (Express): Meta verify handshake, signature check, dedupe, and the `/cron/*` endpoints for the scheduled jobs.
+- `src/cron.ts` the scheduled job handlers (reminders, follow-up, reactivation, waitlist).
+- `verticals/practitioner/` the first pack. `restaurant/`, `salon/` and `service/` (the generic starter) follow the same shape.
+- `clients/meridian.json` the reference config; `clients/_template.json` the blank.
+- `BUILD.md` the full platform spec. `n8n/ARCHITECTURE.md` how n8n and the Core fit together.
 
-## Repo layout
+## From dev to production
 
-```
-core/         the engine: brain, channel, booking, db, config, handler
-verticals/    one folder per vertical (practitioner, restaurant, salon, service)
-clients/      one JSON config per business (+ _template.json)
-n8n/          scheduled + inbound workflow exports
-test/         scripted conversations per vertical
-```
+1. Apply `src/db/schema.sql` to a Supabase project and set `SUPABASE_*`. `server.ts` auto-selects the Supabase store when those are set, the memory store otherwise.
+2. Set `GOOGLE_*`; `server.ts` auto-selects the Google Calendar backend.
+3. Set `WHATSAPP_*` (including `WHATSAPP_APP_SECRET` for signature checks), point the Meta webhook straight at `/webhook` on your deployed `server.ts`, submit the message templates.
+4. n8n runs the scheduled jobs only: it calls the Core `/cron/*` endpoints (guarded by `N8N_WEBHOOK_SECRET`) on a clock. Inbound messages go direct to `/webhook`; n8n is not in that path. See `n8n/ARCHITECTURE.md`. A standalone n8n inbound front (`n8n/inbound.workflow.ts`) exists as an optional alternative if you want n8n to own the external surface.
 
-## Getting started
+## Adding a vertical
 
-1. Copy `.env.example` to `.env` and fill it in. Never commit `.env`.
-2. `npm install`
-3. Apply `core/db/schema.sql` to your Supabase project.
-4. Read `BUILD.md` for the full spec and `CLAUDE.md` for the working rules.
-
-## Docs
-
-- `BUILD.md` is the source of truth for the platform design.
-- `CLAUDE.md` is the working ruleset for anyone (human or agent) writing code here.
+Copy `verticals/practitioner/`, change `pack.json` intents and entities, write the `prompt.md` fragment, and add an availability override only if its resource model differs (restaurant uses covers, salon uses per-staff). Do not touch Core.

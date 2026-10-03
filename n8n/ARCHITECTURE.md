@@ -3,6 +3,18 @@
 Reference for the delivery cell (Somila lead, Tshiamo build, Themba config and sign-off).
 Read `../CLAUDE.md` and `../BUILD.md` first. This document says how n8n and the Core fit together.
 
+## Inbound is direct; n8n runs the schedules
+
+After the merge to the `src/` Core, the Core's own Express server (`src/server.ts`) is the
+WhatsApp webhook. Meta posts straight to `/webhook`, which verifies the signature, dedupes,
+and runs the brain. **n8n is not in the inbound path.** n8n's job is the scheduled jobs:
+reminders, follow-up, reactivation, and the waitlist safety net, each calling a Core
+`/cron/*` endpoint on a clock.
+
+A standalone n8n inbound front (`inbound.workflow.ts`) is kept as an optional alternative for
+teams that want n8n to own the external surface; if used, it forwards the raw body to the Core.
+It is not required, and the deployed copy (n8n id `M8LcXtQ3X8YXzzi1`) can be left inactive.
+
 ## Governing principle: n8n is triggers and transport, the Core owns all logic
 
 Vertical logic never enters n8n (CLAUDE.md). Message templates live in the vertical pack,
@@ -16,16 +28,18 @@ trigger  ->  call a Core HTTP endpoint  ->  log the result
 All the thinking happens behind that endpoint, where the pack and client config are already loaded.
 This keeps the same guarantees if n8n is ever swapped for another orchestrator.
 
-## The Core HTTP surface (core/server.ts)
+## The Core HTTP surface (src/server.ts)
 
-A small always-on service wraps the existing `handler.ts` plus the scheduled jobs. n8n calls it.
-Every call carries a shared secret header (`X-C7-Secret`, value `N8N_WEBHOOK_SECRET`); the Core
-rejects anything without it.
+The Core's Express server is the webhook and the scheduled-job endpoint. The `/cron/*` calls
+carry a shared secret header (`X-C7-Secret`, value `N8N_WEBHOOK_SECRET`); the Core rejects
+cron calls without it. `/webhook` is public (Meta calls it) and is protected by the Meta HMAC
+signature instead.
 
 | Endpoint | Called by | Does |
 | --- | --- | --- |
 | `GET /healthz` | uptime checks | liveness |
-| `POST /inbound` | `inbound` workflow | verify Meta HMAC signature, dedupe on message id, parse, run the brain, reply, persist |
+| `GET /webhook` | Meta | verify handshake: echo `hub.challenge` when the verify token matches |
+| `POST /webhook` | Meta | verify HMAC signature, ack 200 fast, dedupe on message id, run the brain, reply |
 | `POST /cron/reminders` | `reminders` workflow | send due reminders, stamp `reminder_sent_at` |
 | `POST /cron/followup` | `followup` workflow | send due follow-ups, stamp `followup_sent_at` |
 | `POST /cron/reactivation` | `reactivation` workflow | message lapsed customers |
@@ -33,31 +47,29 @@ rejects anything without it.
 
 ```
 Meta WhatsApp Cloud API
-        |  webhook: GET verify (handled in n8n), POST messages
+        |  webhook: GET verify, POST messages
         v
-   n8n inbound workflow  --- respond 200 in <1s ---> Meta
-        |  POST raw body + X-Hub-Signature-256 + X-C7-Secret
+   Core /webhook  ->  verify signature, ack 200, dedupe, handler.ts
+        |
         v
-   Core /inbound  ->  handler.ts  ->  Supabase + WhatsApp send + booking backend
+   Supabase + WhatsApp send + booking backend
+
+   n8n schedules  --(X-C7-Secret)-->  Core /cron/*  (reminders, followup, reactivation, waitlist)
 ```
 
-## Workflow 1: inbound (the spine)
+## Inbound path (direct to the Core)
 
-Trigger: n8n Webhook node, one URL, registered with Meta for both GET and POST.
+Meta posts to `GET/POST /webhook` on the deployed `src/server.ts`:
 
-1. Webhook (GET + POST, same path).
-2. IF: is this the GET verify handshake (`hub.mode == subscribe`)?
-   - Yes: respond with `hub.challenge` when `hub.verify_token` matches `WHATSAPP_VERIFY_TOKEN`. Done.
-   - No: continue.
-3. Respond to Webhook with `200 OK` immediately. Meta retries and disables slow webhooks, so
-   acknowledge first, process after.
-4. HTTP Request to Core `POST /inbound`, forwarding the raw JSON body, the `X-Hub-Signature-256`
-   header, and the `X-C7-Secret` header.
-5. The Core verifies the signature, dedupes on the provider message id (Meta re-delivers), looks up
+1. GET: the verify handshake. The Core echoes `hub.challenge` when `hub.verify_token` matches
+   `WHATSAPP_VERIFY_TOKEN`.
+2. POST: the Core verifies the HMAC signature over the raw body (`WHATSAPP_APP_SECRET`),
+   acks `200` immediately (Meta retries and disables slow webhooks), then dedupes on the
+   provider message id (Meta re-delivers), looks up
    the business by `phoneNumberId`, loads pack + config, runs the brain, sends the reply, persists.
 
-Error handling: the customer-facing failure path lives inside `handler.ts` (it sends the "technical
-issue" message). n8n does not retry `/inbound`, because a retry would double-reply. n8n logs failures.
+Error handling: the Core logs inbound failures. Because the ack is sent before processing and the
+message id is deduped, Meta's retries do not double-reply.
 
 ## Workflows 2 to 4: reminders, followup, reactivation (the scheduled pattern)
 
@@ -85,18 +97,18 @@ The `*_sent_at` stamps are the idempotency guard: a workflow that runs twice nev
 
 ## Credentials (in n8n's credential store, never in the exported JSON)
 
-- Core base URL and the shared secret (`N8N_WEBHOOK_SECRET`).
-- WhatsApp verify token, for the GET handshake in n8n.
-- No Supabase or Claude keys in n8n. Those live in the Core env. That is the point.
+- Core base URL and the shared secret (`N8N_WEBHOOK_SECRET`), for the `/cron/*` calls.
+- No Supabase, Claude or WhatsApp keys in n8n. Those live in the Core env. That is the point.
 
 ## Idempotency and timezone
 
-- Inbound: dedupe on the Meta message id (`processed_messages` table).
+- Inbound: dedupe on the Meta message id (`processed_messages` table, via `claimMessage`).
 - Scheduled: the `*_sent_at` stamps.
 - All schedules run in `Africa/Johannesburg`. Store UTC, present local.
 
 ## Build order
 
-1. `core/server.ts` + `inbound` workflow (proves an end-to-end live message).
-2. `reminders`.
+1. Core `/webhook` with signature + dedupe (done) and the local chat loop (`npm run chat`).
+2. `reminders`: implement `runReminders` in `src/cron.ts` (select due rows, render pack template,
+   send, stamp) and the n8n schedule that calls `/cron/reminders`.
 3. `followup`, `reactivation`, `waitlist`.

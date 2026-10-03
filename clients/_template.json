@@ -1,31 +1,31 @@
 {
   "slug": "",
   "vertical": "practitioner",
-  "name": "",
-  "location": "",
-  "timezone": "Africa/Johannesburg",
-  "channelPhoneId": "",
+  "practice": {
+    "name": "",
+    "location": "",
+    "address": "",
+    "parking": "",
+    "timezone": "Africa/Johannesburg"
+  },
   "hours": {
-    "mon": [{ "open": "09:00", "close": "17:00" }],
-    "tue": [{ "open": "09:00", "close": "17:00" }],
-    "wed": [{ "open": "09:00", "close": "17:00" }],
-    "thu": [{ "open": "09:00", "close": "17:00" }],
-    "fri": [{ "open": "09:00", "close": "17:00" }]
+    "mon": ["09:00", "17:00"],
+    "tue": ["09:00", "17:00"],
+    "wed": ["09:00", "17:00"],
+    "thu": ["09:00", "17:00"],
+    "fri": ["09:00", "17:00"],
+    "sat": null,
+    "sun": null
   },
   "services": [
     { "name": "", "durationMin": 30, "priceZar": 0 }
   ],
-  "resources": [
-    { "id": "r1", "name": "", "kind": "practitioner", "capacity": 1 }
-  ],
   "policies": {
+    "medicalAid": "",
+    "referral": "",
     "cancellation": ""
   },
-  "booking": {
-    "backend": "google_calendar",
-    "config": {
-      "calendarId": "",
-      "serviceAccountJson": ""
-    }
-  }
+  "booking": { "slotStepMin": 30, "leadTimeHours": 2, "maxDaysAhead": 21 },
+  "voice": { "language": "South African English", "currency": "ZAR", "style": "warm, brief, professional; no em dashes" },
+  "channels": { "whatsappNumberId": "REPLACE_ME" }
 }

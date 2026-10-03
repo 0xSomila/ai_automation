@@ -1,8 +1,14 @@
 /**
- * C7 WhatsApp Inbound (the spine).
+ * C7 WhatsApp Inbound (OPTIONAL alternative front).
  *
- * Source of truth for the n8n workflow. Built and validated with the n8n Workflow SDK,
- * deployed to n8n as workflow id M8LcXtQ3X8YXzzi1. Edit here, re-validate, then update in n8n.
+ * After the merge to the src/ Core, inbound WhatsApp goes DIRECT to the Core's own
+ * /webhook (verify + signature + dedupe + brain). This n8n workflow is no longer required;
+ * it is kept as an alternative for teams that want n8n to own the external surface. If used,
+ * point it at CORE_BASE_URL/webhook (the Core verifies the forwarded raw body and signature).
+ * The deployed copy (n8n id M8LcXtQ3X8YXzzi1) can be left inactive.
+ *
+ * Source of truth for the n8n workflow. Built and validated with the n8n Workflow SDK.
+ * Edit here, re-validate, then update in n8n.
  *
  * Two webhook triggers on path `whatsapp/inbound`:
  *  - GET: Meta's verify handshake. Echoes hub.challenge only when hub.verify_token
@@ -90,7 +96,7 @@ const forwardToCore = node({
     name: "Forward to Core /inbound",
     parameters: {
       method: "POST",
-      url: expr("{{ $env.CORE_BASE_URL }}/inbound"),
+      url: expr("{{ $env.CORE_BASE_URL }}/webhook"),
       authentication: "genericCredentialType",
       genericAuthType: "httpTemplatedCustomAuth",
       sendHeaders: true,

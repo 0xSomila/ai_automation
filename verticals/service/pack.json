@@ -1,7 +1,7 @@
 {
   "vertical": "service",
   "intents": ["faq", "qualify", "capture_lead", "book", "reschedule", "cancel"],
-  "tools": ["answer_faq", "qualify", "capture_lead", "check_availability", "create_booking", "reschedule", "cancel"],
+  "tools": ["check_availability", "book_appointment"],
   "entities": {
     "booking": { "required": ["name", "service", "date", "time"], "optional": ["address", "quoteNeeded"] }
   },

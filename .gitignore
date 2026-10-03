@@ -3,13 +3,8 @@ dist/
 .env
 .env.*
 !.env.example
-
-# Live client configs may carry real tokens. Only the template and reference are tracked.
-clients/*.json
-!clients/_template.json
-!clients/meridian.json
-
-# Logs and local artifacts
 *.log
-.DS_Store
-coverage/
+
+# Live client configs may carry real tokens. Name them *.local.json to keep them
+# out of git. Tracked configs (the reference and the template) stay plain .json.
+clients/*.local.json

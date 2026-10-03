@@ -5,6 +5,6 @@
   "turns": [
     { "customer": "Do you have space for dinner on Friday?" },
     { "customer": "A table for six please", "expectTool": "check_availability" },
-    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "create_booking", "expectReply": ["six", "Friday"] }
+    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "book_appointment", "expectReply": ["six", "Friday"] }
   ]
 }

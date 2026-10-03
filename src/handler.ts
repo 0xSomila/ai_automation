@@ -1,0 +1,35 @@
+import { loadConfig } from "./config/load";
+import { loadPack } from "./brain/pack";
+import { runBrain } from "./brain/claude";
+import type { Store } from "./db/types";
+import type { BookingBackend } from "./booking/adapter";
+
+export interface Deps {
+  store: Store;
+  backend: BookingBackend;
+}
+
+// One inbound message, resolved to a reply string. The caller (chat
+// harness or WhatsApp webhook) decides how to deliver it.
+export async function handleMessage(
+  deps: Deps,
+  args: { businessSlug: string; from: string; text: string },
+): Promise<string> {
+  const config = loadConfig(args.businessSlug);
+  const pack = loadPack(config.vertical);
+  const businessId = config.slug;
+
+  const customer = await deps.store.getOrCreateCustomer(businessId, args.from);
+  const conversationId = await deps.store.getOrCreateConversation(businessId, customer.id);
+
+  return runBrain({
+    config,
+    pack,
+    backend: deps.backend,
+    store: deps.store,
+    businessId,
+    customerId: customer.id,
+    conversationId,
+    userText: args.text,
+  });
+}

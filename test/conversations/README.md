@@ -17,11 +17,17 @@ Case shape:
   "turns": [
     { "customer": "hi, do you take new patients?" },
     { "customer": "I'd like a first appointment this week", "expectTool": "check_availability" },
-    { "customer": "Tuesday morning works", "expectTool": "create_booking", "expectReply": ["reference", "Tuesday"] }
+    { "customer": "Tuesday morning works", "expectTool": "book_appointment", "expectReply": ["reference", "Tuesday"] }
   ]
 }
 ```
 
 `expectTool` asserts the brain called that tool on that turn. `expectReply`
 asserts the reply contains each string. Keep assertions about behaviour, not exact
-wording.
+wording. Tools in the current build: `check_availability`, `book_appointment`.
+
+These are target specs, not all passing yet. The restaurant (covers) and salon
+(per-staff) cases assume resource-model overrides that are noted as pending in those
+packs; the generic service pack has no lead-capture tool yet. A small runner that
+drives these against the handler with a deterministic in-memory backend is the next
+testing step.

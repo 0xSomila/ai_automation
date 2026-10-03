@@ -4,6 +4,8 @@ Full build context for C7's AI automation platform. One engine, many verticals. 
 
 Owner: Catalyst 7. Delivery cell: Somila (lead), Tshiamo (build), Themba (config and sign-off).
 
+> **Implementation note (reflects the current repo).** This spec is the north star. The shipped code lives under `src/` (not `core/`); see `README.md` and `CLAUDE.md` for the actual layout. The current build ships two tools, `check_availability` and `book_appointment`, running against swappable store and booking backends (in-memory for dev, Supabase + Google Calendar for prod); the wider tool library in section 7 is the roadmap. Inbound WhatsApp is handled directly by `src/server.ts` `/webhook`; n8n runs the scheduled jobs via `/cron/*` (see `n8n/ARCHITECTURE.md`).
+
 The mental model: build the **Core** once (channel, brain, state, scheduler). Everything that differs between a physio, a restaurant and a salon lives in a **Vertical Pack**. A live client is a **Vertical Pack + a Client Config**. To launch a new vertical you write a pack, not a new app. To onboard a client you write a config, not code.
 
 ---

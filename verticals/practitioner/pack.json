@@ -1,7 +1,7 @@
 {
   "vertical": "practitioner",
   "intents": ["faq", "qualify", "book", "reschedule", "cancel", "reactivate"],
-  "tools": ["answer_faq", "qualify", "check_availability", "create_booking", "reschedule", "cancel"],
+  "tools": ["check_availability", "book_appointment"],
   "entities": {
     "booking": { "required": ["name", "service", "date", "time"], "optional": ["firstVisit"] }
   },

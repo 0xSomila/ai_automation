@@ -1,38 +1,31 @@
-# Working rules (C7 Automation OS)
+# Working rules for Claude Code
 
-Read `BUILD.md` for the full design. These are the rules that keep the platform a platform.
+Read this before changing anything. `BUILD.md` is the full platform spec; `n8n/ARCHITECTURE.md` is how n8n and the Core fit together.
 
-## The three layers, never mixed
+## Architecture in one line
+One vertical-agnostic Core. Each vertical is a Pack under `verticals/`. Each client is a Config (JSON). Business data never enters code; vertical logic never enters a client config.
 
-1. **Core** (`core/`): vertical-agnostic. The channel, brain, booking primitive, state store, config loader, handler. It never knows the name of a business or the quirks of a vertical.
-2. **Vertical Pack** (`verticals/<name>/`): per vertical. Intents, entity schema, tool selection, resource model, message templates, prompt fragment, availability logic.
-3. **Client Config** (`clients/<slug>.json`): per business. Name, location, hours, services or menu, prices (ZAR), policies, resources, channel number.
+## Hard rules
+- The model never invents availability. Open times come only from `check_availability`, which reads config hours and the booking backend.
+- `book_appointment` re-validates the slot against the backend before writing. Never trust the model's tool arguments.
+- Keep the fixed system prompt stable so prompt caching hits. Only the config block interpolates.
+- Pin the model with `CLAUDE_MODEL` (default Haiku). Cap tool rounds with `MAX_TOOL_ROUNDS`. Log token usage per conversation.
+- All times are timezone-aware (`Africa/Johannesburg` by default from config). Store UTC, present local.
+- Money is ZAR. No em dashes in any customer-facing copy.
+- Adding a vertical is a new folder under `verticals/`, never an edit to Core control flow. If Core must change, change it once for all verticals.
+- Inbound webhooks are verified (Meta HMAC over the raw body) and deduped (`claimMessage` on the provider message id). Never process an unverified or already-seen message.
+- n8n is triggers and transport only; the Core owns all logic. n8n calls the Core `/cron/*` endpoints on a clock. Inbound goes direct to `/webhook`.
+- Secrets only in env. Never commit `.env` or a live config with a real token.
 
-Business data never enters code. Vertical logic never enters a client config.
+## Where things live
+- `src/brain/` the Core brain: system prompt, tools, Claude loop.
+- `src/booking/` the booking backend adapter and implementations (memory for dev, Google Calendar for prod), plus availability.
+- `src/db/` the store interface and implementations (memory for dev, Supabase for prod), schema, and inbound dedupe.
+- `src/channel/` WhatsApp Cloud API: send, receive, signature verification.
+- `src/handler.ts` ties a message to a reply. `src/server.ts` the webhook and `/cron/*`. `src/cron.ts` the scheduled jobs.
+- `verticals/<name>/` the pack: pack.json + prompt.md. `service/` is the generic starter to copy.
+- `clients/` client configs (`meridian.json` is the reference, `_template.json` the blank).
+- `n8n/` the scheduled workflows and the architecture doc.
 
-## Non-negotiables
-
-- **One booking primitive** (resource + capacity + duration + party + startsAt + service). Do not add a parallel "reservation" model. Extend the primitive.
-- **The model never invents availability.** It comes only from `check_availability`, which reads the pack's resource model and the backend adapter.
-- **Re-validate every slot inside `create_booking`** before writing. Never trust the model's tool arguments.
-- **Adding a vertical = a new folder under `verticals/`**, never edits to Core control flow. If Core must change, change it once for all verticals. If Phase 2 needs Core changes beyond adding a tool or a pack, the abstraction leaked. Fix the Core, do not fork it.
-- **Timezone-aware everywhere** (`Africa/Johannesburg`). Store UTC, present local.
-- **Money is ZAR.** No em dashes in user-facing copy.
-- **Every external call wrapped, logged, with a clean customer-facing failure path.**
-- **Secrets only in env.** Never commit `.env` or a live client config with a real token.
-
-## Targets
-
-- A new client on an existing pack: hours.
-- A new pack: days.
-- If it takes longer, the abstraction leaked. Fix Core once.
-
-## Where things go
-
-| You are adding | Put it in |
-| --- | --- |
-| A new business | `clients/<slug>.json` (copy `_template.json`) |
-| A new vertical | `verticals/<name>/` (copy `verticals/service/`) |
-| A new shared tool | `core/brain/tools.ts` + list it in the packs that use it |
-| A new scheduled workflow | `n8n/` |
-| A booking backend | `core/booking/` behind the adapter interface |
+## Dev path
+`npm install` then `npm run chat` with only `ANTHROPIC_API_KEY` set. It runs the brain against an in-memory store and an in-memory calendar seeded from the Meridian config. No WhatsApp, Supabase or Google needed to iterate on the conversation.

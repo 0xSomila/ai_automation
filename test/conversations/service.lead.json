@@ -1,9 +1,9 @@
 {
-  "name": "captures a lead when the job needs a quote first",
+  "name": "quotes first for a job that needs a site visit",
   "vertical": "service",
   "client": "_stub_service",
   "turns": [
     { "customer": "Do you do full house deep cleans?" },
-    { "customer": "It's a 4 bedroom in Sandton, how much?", "expectTool": "capture_lead", "expectReply": ["quote", "back"] }
+    { "customer": "It's a 4 bedroom in Sandton, how much?", "expectReply": ["quote", "back"] }
   ]
 }
