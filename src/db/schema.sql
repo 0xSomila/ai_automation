@@ -12,6 +12,7 @@ create table if not exists customers (
   wa_phone text not null,
   name text,
   last_seen timestamptz default now(),
+  reactivated_at timestamptz,
   unique (business_id, wa_phone)
 );
 
@@ -46,6 +47,7 @@ create table if not exists engagements (
   backend_event_id text,
   reminder_sent_at timestamptz,
   followup_sent_at timestamptz,
+  waitlist_notified_at timestamptz,
   payload jsonb,
   created_at timestamptz default now()
 );

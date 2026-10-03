@@ -1,11 +1,42 @@
 {
   "vertical": "salon",
-  "intents": ["faq", "qualify", "book", "rebook", "cancel", "promotions", "reactivate"],
-  "tools": ["check_availability", "book_appointment"],
+  "intents": [
+    "faq",
+    "qualify",
+    "book",
+    "rebook",
+    "cancel",
+    "promotions",
+    "reactivate"
+  ],
+  "tools": [
+    "check_availability",
+    "book_appointment",
+    "reschedule_appointment",
+    "cancel_appointment"
+  ],
   "entities": {
-    "booking": { "required": ["name", "service", "date", "time"], "optional": ["staff"] }
+    "booking": {
+      "required": [
+        "name",
+        "service",
+        "date",
+        "time"
+      ],
+      "optional": [
+        "staff"
+      ]
+    }
   },
-  "resourceModel": { "kind": "per_staff", "capacityPerSlot": 1 },
-  "templates": ["appointment_reminder", "rebooking_nudge", "promotion", "reactivation"],
+  "resourceModel": {
+    "kind": "per_staff",
+    "capacityPerSlot": 1
+  },
+  "templates": [
+    "appointment_reminder",
+    "rebooking_nudge",
+    "promotion",
+    "reactivation"
+  ],
   "promptFragment": "prompt.md"
 }

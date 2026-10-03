@@ -1,5 +1,26 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Customer, DueReminder, Engagement, Message, Store } from "./types";
+import type {
+  Customer,
+  DueMessage,
+  DueReactivation,
+  DueReminder,
+  DueWaitlist,
+  Engagement,
+  Message,
+  Store,
+} from "./types";
+
+function rowToDueMessage(r: any): DueMessage {
+  return {
+    engagementId: r.id,
+    businessId: r.business_id,
+    customerPhone: r.customers?.wa_phone as string,
+    customerName: r.customers?.name as string | undefined,
+    service: r.service as string | undefined,
+    startsAt: r.starts_at as string,
+    durationMin: r.duration_min as number | undefined,
+  };
+}
 
 // Production store. Apply src/db/schema.sql to the project first.
 export class SupabaseStore implements Store {
@@ -122,6 +143,136 @@ export class SupabaseStore implements Store {
     const { error } = await this.db
       .from("engagements")
       .update({ reminder_sent_at: atISO })
+      .eq("id", engagementId);
+    if (error) throw error;
+  }
+
+  async findEngagementByReference(
+    businessId: string,
+    reference: string,
+  ): Promise<Engagement | null> {
+    const { data, error } = await this.db
+      .from("engagements")
+      .select(
+        "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id",
+      )
+      .eq("business_id", businessId)
+      .eq("reference", reference)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      customerId: data.customer_id,
+      kind: data.kind,
+      service: data.service ?? undefined,
+      startsAt: data.starts_at ?? undefined,
+      durationMin: data.duration_min ?? undefined,
+      status: data.status,
+      reference: data.reference ?? undefined,
+      backendEventId: data.backend_event_id ?? undefined,
+    };
+  }
+
+  async updateEngagement(id: string, patch: Partial<Engagement>): Promise<void> {
+    const row: Record<string, unknown> = {};
+    if ("status" in patch) row.status = patch.status;
+    if ("service" in patch) row.service = patch.service;
+    if ("startsAt" in patch) row.starts_at = patch.startsAt;
+    if ("durationMin" in patch) row.duration_min = patch.durationMin;
+    if ("backendEventId" in patch) row.backend_event_id = patch.backendEventId;
+    if ("reminderSentAt" in patch) row.reminder_sent_at = patch.reminderSentAt ?? null;
+    if ("followupSentAt" in patch) row.followup_sent_at = patch.followupSentAt ?? null;
+    if ("waitlistNotifiedAt" in patch) row.waitlist_notified_at = patch.waitlistNotifiedAt ?? null;
+    if (Object.keys(row).length === 0) return;
+    const { error } = await this.db.from("engagements").update(row).eq("id", id);
+    if (error) throw error;
+  }
+
+  async dueFollowups(nowISO: string): Promise<DueMessage[]> {
+    const { data, error } = await this.db
+      .from("engagements")
+      .select("id, business_id, service, starts_at, duration_min, customers(wa_phone, name)")
+      .in("status", ["confirmed", "completed"])
+      .is("followup_sent_at", null)
+      .lt("starts_at", nowISO);
+    if (error) throw error;
+    return (data ?? []).map(rowToDueMessage).filter((d) => d.customerPhone);
+  }
+
+  async markFollowupSent(engagementId: string, atISO: string): Promise<void> {
+    const { error } = await this.db
+      .from("engagements")
+      .update({ followup_sent_at: atISO })
+      .eq("id", engagementId);
+    if (error) throw error;
+  }
+
+  async dueReactivations(nowISO: string, dormantDays: number): Promise<DueReactivation[]> {
+    const cutoff = new Date(Date.parse(nowISO) - dormantDays * 864e5).toISOString();
+    // Candidate customers not reactivated inside the window.
+    const { data: customers, error: cErr } = await this.db
+      .from("customers")
+      .select("id, business_id, wa_phone, name, reactivated_at");
+    if (cErr) throw cErr;
+
+    const out: DueReactivation[] = [];
+    for (const c of customers ?? []) {
+      if (c.reactivated_at && c.reactivated_at >= cutoff) continue;
+      const { data: eng, error: eErr } = await this.db
+        .from("engagements")
+        .select("starts_at, status")
+        .eq("customer_id", c.id)
+        .neq("status", "cancelled")
+        .not("starts_at", "is", null)
+        .order("starts_at", { ascending: false })
+        .limit(1);
+      if (eErr) throw eErr;
+      const last = eng?.[0]?.starts_at as string | undefined;
+      if (!last || last >= cutoff || last > nowISO) continue; // none, recent, or upcoming
+      out.push({
+        businessId: c.business_id,
+        customerId: c.id,
+        customerPhone: c.wa_phone,
+        customerName: c.name ?? undefined,
+      });
+    }
+    return out;
+  }
+
+  async markReactivated(customerId: string, atISO: string): Promise<void> {
+    const { error } = await this.db
+      .from("customers")
+      .update({ reactivated_at: atISO })
+      .eq("id", customerId);
+    if (error) throw error;
+  }
+
+  async openWaitlist(nowISO: string): Promise<DueWaitlist[]> {
+    const { data, error } = await this.db
+      .from("engagements")
+      .select("id, business_id, service, starts_at, customers(wa_phone, name)")
+      .eq("status", "waitlist")
+      .is("waitlist_notified_at", null)
+      .gte("starts_at", nowISO);
+    if (error) throw error;
+    return (data ?? [])
+      .map((r: any) => ({
+        engagementId: r.id,
+        businessId: r.business_id,
+        customerPhone: r.customers?.wa_phone as string,
+        customerName: r.customers?.name as string | undefined,
+        service: r.service as string | undefined,
+        date: (r.starts_at as string).slice(0, 10),
+      }))
+      .filter((d) => d.customerPhone);
+  }
+
+  async markWaitlistNotified(engagementId: string, atISO: string): Promise<void> {
+    const { error } = await this.db
+      .from("engagements")
+      .update({ waitlist_notified_at: atISO })
       .eq("id", engagementId);
     if (error) throw error;
   }

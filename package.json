@@ -12,7 +12,8 @@
     "check:env": "tsx src/checkEnv.ts",
     "test:conversations": "tsx test/run.ts",
     "test:reminders": "tsx test/reminders.ts",
-    "test:routing": "tsx test/routing.ts"
+    "test:routing": "tsx test/routing.ts",
+    "test:lifecycle": "tsx test/lifecycle.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.1",

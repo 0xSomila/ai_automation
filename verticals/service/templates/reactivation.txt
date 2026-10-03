@@ -1,0 +1,1 @@
+Hi {{name}}, it has been a while since {{business}} last helped you out. Reply here whenever you need us again.

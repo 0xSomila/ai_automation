@@ -84,13 +84,15 @@ and the `engagements` table, and availability reflects real busy times.
 
 ---
 
-## Phase 5 — Complete the tool set and the scheduled family
+## Phase 5 — Complete the tool set and the scheduled family — DONE (reschedule/cancel/join_waitlist tools; followup/reactivation/waitlist jobs + n8n schedules; test:lifecycle green)
 
 **Goal:** full appointment lifecycle and the rest of the nudges.
 
 - Tools: `reschedule` and `cancel` (re-validate like `book_appointment`; `cancel` releases the slot).
-- Scheduled jobs: `followup` (daily), `reactivation` (weekly), `waitlist` (in-process on cancel, plus
-  the ~15 min safety-net `/cron/waitlist`).
+- Scheduled jobs: `followup` (daily), `reactivation` (weekly), `waitlist` (~15 min safety-net
+  `/cron/waitlist`). Decision: waitlist release runs through the cron scan only, so the tool layer
+  stays free of the notifier; cancel frees the slot and the next scan (<=15 min) offers it. Zero-latency
+  in-process release is a later optimization if the latency matters.
 - Their n8n schedules.
 
 **Done when:** a customer can reschedule and cancel over WhatsApp, and follow-up/reactivation fire correctly.

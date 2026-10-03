@@ -1,0 +1,1 @@
+Hi {{name}}, thanks for visiting {{business}}. How was your {{service}}? Reply here to rebook with your stylist.

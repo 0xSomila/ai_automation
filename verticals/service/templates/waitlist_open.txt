@@ -1,0 +1,1 @@
+Hi {{name}}, a space has opened at {{business}} on {{date}}. Reply here if you would like it.

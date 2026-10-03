@@ -1,0 +1,1 @@
+Hi {{name}}, a table has opened at {{business}} on {{date}}. Reply here if you would like it. First to reply gets it.

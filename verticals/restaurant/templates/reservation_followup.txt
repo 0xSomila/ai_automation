@@ -1,0 +1,1 @@
+Hi {{name}}, thanks for dining with {{business}}. We hope it was great. Reply here to book your next table.

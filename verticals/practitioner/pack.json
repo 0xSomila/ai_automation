@@ -1,11 +1,40 @@
 {
   "vertical": "practitioner",
-  "intents": ["faq", "qualify", "book", "reschedule", "cancel", "reactivate"],
-  "tools": ["check_availability", "book_appointment"],
+  "intents": [
+    "faq",
+    "qualify",
+    "book",
+    "reschedule",
+    "cancel",
+    "reactivate"
+  ],
+  "tools": [
+    "check_availability",
+    "book_appointment",
+    "reschedule_appointment",
+    "cancel_appointment"
+  ],
   "entities": {
-    "booking": { "required": ["name", "service", "date", "time"], "optional": ["firstVisit"] }
+    "booking": {
+      "required": [
+        "name",
+        "service",
+        "date",
+        "time"
+      ],
+      "optional": [
+        "firstVisit"
+      ]
+    }
   },
-  "resourceModel": { "kind": "single", "capacityPerSlot": 1 },
-  "templates": ["appointment_reminder", "appointment_followup", "reactivation"],
+  "resourceModel": {
+    "kind": "single",
+    "capacityPerSlot": 1
+  },
+  "templates": [
+    "appointment_reminder",
+    "appointment_followup",
+    "reactivation"
+  ],
   "promptFragment": "prompt.md"
 }

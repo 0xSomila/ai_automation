@@ -1,0 +1,1 @@
+Hi {{name}}, thanks for coming in to {{business}}. How are you feeling after your {{service}}? Reply here to book your next visit.

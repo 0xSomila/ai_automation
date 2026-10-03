@@ -1,0 +1,1 @@
+Hi {{name}}, it has been a while since your last visit to {{business}}. Reply here and we will find you a time that suits you.

@@ -25,3 +25,8 @@ export function renderTemplate(body: string, vars: Record<string, string | undef
 export function reminderTemplateName(templates: string[]): string | undefined {
   return templates.find((t) => t.endsWith("_reminder"));
 }
+
+// The follow-up template a pack uses, by convention the one named *_followup.
+export function followupTemplateName(templates: string[]): string | undefined {
+  return templates.find((t) => t.endsWith("_followup"));
+}
