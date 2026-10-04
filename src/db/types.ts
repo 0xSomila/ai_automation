@@ -96,10 +96,25 @@ export interface Store {
 
   // Covers resource model: confirmed reservations on a date, to sum against capacity.
   reservationsOn(businessId: string, dateISO: string): Promise<ReservationLoad[]>;
+
+  // Observability: record each scheduled-job run and read the recent ones.
+  recordCronRun(job: string, result: CronRunResult, atISO: string): Promise<void>;
+  recentCronRuns(limit: number): Promise<CronRun[]>;
 }
 
 export interface ReservationLoad {
   startsAt: string;
   party: number;
   durationMin?: number;
+}
+
+export interface CronRunResult {
+  sent: number;
+  skipped: number;
+  failed: number;
+}
+
+export interface CronRun extends CronRunResult {
+  job: string;
+  ranAt: string;
 }

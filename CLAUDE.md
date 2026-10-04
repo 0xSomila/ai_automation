@@ -24,7 +24,9 @@ One vertical-agnostic Core. Each vertical is a Pack under `verticals/`. Each cli
 - `src/channel/` WhatsApp Cloud API: send, receive, signature verification.
 - `src/handler.ts` ties a message to a reply. `src/server.ts` the webhook and `/cron/*`. `src/cron.ts` the scheduled jobs.
 - `verticals/<name>/` the pack: pack.json + prompt.md. `service/` is the generic starter to copy.
-- `clients/` client configs (`meridian.json` is the reference, `_template.json` the blank).
+- `clients/` client configs (`meridian.json`, `harbour.json` are references, `_template.json` the blank).
+- `src/config/store.ts` the config source of truth: the `businesses` table when Supabase is set,
+  else the `clients/` files. Onboard or update a client with `npm run onboard -- <config.json>`.
 - `n8n/` the scheduled workflows and the architecture doc.
 
 ## Dev path

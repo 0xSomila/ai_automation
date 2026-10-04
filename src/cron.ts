@@ -1,5 +1,5 @@
 import type { Deps } from "./handler";
-import { loadConfig } from "./config/load";
+import { getConfig } from "./config/store";
 import { loadPack } from "./brain/pack";
 import { computeOpenSlots } from "./booking/availability";
 import {
@@ -52,7 +52,7 @@ export async function runReminders(deps: Deps): Promise<CronResult> {
 
   for (const d of due) {
     try {
-      const config = loadConfig(d.businessId);
+      const config = await getConfig(d.businessId);
       const windowHours = config.booking.reminderHoursBefore ?? DEFAULT_REMINDER_HOURS;
       const leadMs = Date.parse(d.startsAt) - Date.parse(nowISO);
       if (leadMs > windowHours * 36e5) {
@@ -103,7 +103,7 @@ export async function runFollowup(deps: Deps): Promise<CronResult> {
 
   for (const d of due) {
     try {
-      const config = loadConfig(d.businessId);
+      const config = await getConfig(d.businessId);
       const pack = loadPack(config.vertical);
       const templateName = followupTemplateName(pack.templates);
       if (!templateName) {
@@ -143,7 +143,7 @@ export async function runReactivation(deps: Deps): Promise<CronResult> {
 
   for (const d of due) {
     try {
-      const config = loadConfig(d.businessId);
+      const config = await getConfig(d.businessId);
       let body: string;
       try {
         body = loadTemplate(config.vertical, "reactivation");
@@ -178,7 +178,7 @@ export async function runWaitlist(deps: Deps): Promise<CronResult> {
 
   for (const w of waiting) {
     try {
-      const config = loadConfig(w.businessId);
+      const config = await getConfig(w.businessId);
       const busy = await deps.backend.getBusy(w.date);
       const open = computeOpenSlots(config, w.date, busy);
       if (open.length === 0) {

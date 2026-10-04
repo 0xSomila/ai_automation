@@ -58,6 +58,16 @@ create table if not exists processed_messages (  -- inbound dedupe (Meta re-deli
   processed_at timestamptz default now()
 );
 
+create table if not exists cron_runs (       -- lightweight observability for scheduled jobs
+  id uuid primary key default gen_random_uuid(),
+  job text not null,                          -- reminders | followup | reactivation | waitlist
+  sent int default 0,
+  skipped int default 0,
+  failed int default 0,
+  ran_at timestamptz default now()
+);
+
+create index if not exists idx_cron_runs_job on cron_runs(job, ran_at desc);
 create index if not exists idx_messages_conversation on messages(conversation_id, created_at);
 create index if not exists idx_engagements_business on engagements(business_id, starts_at);
 create index if not exists idx_engagements_status on engagements(status);

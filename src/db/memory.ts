@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
+  CronRun,
+  CronRunResult,
   Customer,
   DueMessage,
   DueReactivation,
@@ -201,5 +203,15 @@ export class MemoryStore implements Store {
           e.startsAt?.startsWith(dateISO),
       )
       .map((e) => ({ startsAt: e.startsAt!, party: e.party ?? 1, durationMin: e.durationMin }));
+  }
+
+  private cronRuns: CronRun[] = [];
+
+  async recordCronRun(job: string, result: CronRunResult, atISO: string): Promise<void> {
+    this.cronRuns.unshift({ job, ...result, ranAt: atISO });
+  }
+
+  async recentCronRuns(limit: number): Promise<CronRun[]> {
+    return this.cronRuns.slice(0, limit);
   }
 }

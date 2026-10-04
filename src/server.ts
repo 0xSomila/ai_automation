@@ -4,7 +4,7 @@ import { handleMessage, type Deps } from "./handler";
 import { MemoryStore } from "./db/memory";
 import { MemoryBackend } from "./booking/memory";
 import { parseInbound, sendText, verifySignature } from "./channel/whatsapp";
-import { resolveBusinessByPhoneNumberId } from "./config/load";
+import { resolveBusiness } from "./config/store";
 import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier";
 import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron";
 
@@ -65,7 +65,7 @@ app.post("/webhook", async (req, res) => {
 
     // Multi-tenant: route by the number the message arrived on, falling back to
     // the default client when the number is not mapped to a config.
-    const slug = resolveBusinessByPhoneNumberId(inbound.phoneNumberId) ?? DEFAULT_SLUG;
+    const slug = (await resolveBusiness(inbound.phoneNumberId)) ?? DEFAULT_SLUG;
 
     // Dedupe: Meta re-delivers. Process each provider message id at most once.
     const fresh = await deps.store.claimMessage(slug, inbound.messageId);
@@ -101,10 +101,25 @@ app.post("/cron/:job", async (req, res) => {
   try {
     const deps = await buildDeps();
     const result = await job(deps);
+    await deps.store.recordCronRun(req.params.job, result, new Date().toISOString());
     return res.status(200).json({ ok: true, result });
   } catch (e) {
     console.error(`cron ${req.params.job} failed:`, (e as Error).message);
     return res.status(500).json({ ok: false, error: "cron_failed" });
+  }
+});
+
+// Lightweight observability: recent scheduled-job runs. Secret-guarded like /cron/*.
+app.get("/ops/summary", async (req, res) => {
+  const expected = process.env.N8N_WEBHOOK_SECRET;
+  if (!expected || req.header("x-c7-secret") !== expected) return res.sendStatus(401);
+  try {
+    const deps = await buildDeps();
+    const runs = await deps.store.recentCronRuns(50);
+    return res.status(200).json({ ok: true, runs });
+  } catch (e) {
+    console.error("ops summary failed:", (e as Error).message);
+    return res.status(500).json({ ok: false, error: "ops_failed" });
   }
 });
 

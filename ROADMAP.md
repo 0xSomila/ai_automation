@@ -114,7 +114,7 @@ beyond shared additions. Target: a new pack in days, a new client on an existing
 
 ---
 
-## Phase 7 — Scale: many clients, admin, observability
+## Phase 7 — Scale: many clients, admin, observability — CODE DONE (DB-backed config store with file fallback, `npm run onboard` CLI, cron_runs + /ops/summary). Vercel admin UI deferred; config-alone onboarding is live via the CLI. Persisted observability needs the Supabase store.
 
 **Goal:** run several businesses without per-client engineering.
 

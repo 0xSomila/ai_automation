@@ -1,4 +1,4 @@
-import { loadConfig } from "./config/load";
+import { getConfig } from "./config/store";
 import { loadPack } from "./brain/pack";
 import { runBrain, type BrainHooks } from "./brain/claude";
 import type { Store } from "./db/types";
@@ -19,7 +19,7 @@ export async function handleMessage(
   args: { businessSlug: string; from: string; text: string },
   hooks?: BrainHooks,
 ): Promise<string> {
-  const config = loadConfig(args.businessSlug);
+  const config = await getConfig(args.businessSlug);
   const pack = loadPack(config.vertical);
   const businessId = config.slug;
 

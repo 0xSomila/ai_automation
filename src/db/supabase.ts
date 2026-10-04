@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
+  CronRun,
+  CronRunResult,
   Customer,
   DueMessage,
   DueReactivation,
@@ -295,6 +297,29 @@ export class SupabaseStore implements Store {
       startsAt: r.starts_at,
       party: r.party ?? 1,
       durationMin: r.duration_min ?? undefined,
+    }));
+  }
+
+  async recordCronRun(job: string, result: CronRunResult, atISO: string): Promise<void> {
+    const { error } = await this.db
+      .from("cron_runs")
+      .insert({ job, sent: result.sent, skipped: result.skipped, failed: result.failed, ran_at: atISO });
+    if (error) throw error;
+  }
+
+  async recentCronRuns(limit: number): Promise<CronRun[]> {
+    const { data, error } = await this.db
+      .from("cron_runs")
+      .select("job, sent, skipped, failed, ran_at")
+      .order("ran_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      job: r.job,
+      sent: r.sent ?? 0,
+      skipped: r.skipped ?? 0,
+      failed: r.failed ?? 0,
+      ranAt: r.ran_at,
     }));
   }
 }

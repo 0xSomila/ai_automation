@@ -42,6 +42,21 @@ The Core ships as a container (`Dockerfile`), run with `npm start` (tsx over the
 verify the production environment before cutover. The full go-live steps (host, Meta WhatsApp
 webhook, reminder template, n8n schedule, verification checklist) are in `docs/GO-LIVE.md`.
 
+## Onboarding a client
+
+A client is a config, not code. When Supabase is set, configs live in the `businesses`
+table and onboarding needs no redeploy; otherwise they are files under `clients/`.
+
+```bash
+npm run onboard -- clients/harbour.json   # validate + create/update a client
+npm run onboard -- --list                 # list onboarded clients
+npm run onboard -- --show meridian         # print a client's resolved config
+```
+
+Inbound messages route to the right client by the WhatsApp number in the config
+(`channels.whatsappNumberId`). Scheduled-job runs are recorded and readable at the
+secret-guarded `GET /ops/summary` (persisted with the Supabase store).
+
 ## Adding a vertical
 
 Copy `verticals/practitioner/`, change `pack.json` intents and entities, write the `prompt.md` fragment, and add an availability override only if its resource model differs (restaurant uses covers, salon uses per-staff). Do not touch Core.

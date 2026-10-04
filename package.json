@@ -10,6 +10,7 @@
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "check:env": "tsx src/checkEnv.ts",
+    "onboard": "tsx src/onboard.ts",
     "test:conversations": "tsx test/run.ts",
     "test:reminders": "tsx test/reminders.ts",
     "test:routing": "tsx test/routing.ts",
