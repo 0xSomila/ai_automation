@@ -4,7 +4,7 @@
   "client": "meridian",
   "turns": [
     { "customer": "Hi, are you taking new patients?" },
-    { "customer": "I have lower back pain, I'd like a first appointment this week", "expectTool": "check_availability" },
-    { "customer": "Tuesday morning works for me. My name is Thandi.", "expectTool": "book_appointment", "expectReply": ["confirm"] }
+    { "customer": "Is 9am next Tuesday available for an initial consultation?", "expectTool": "check_availability" },
+    { "customer": "Please book that 9am slot next Tuesday. My name is Thandi.", "expectTool": "book_appointment", "expectBooking": { "kind": "appointment", "service": "Initial consultation" } }
   ]
 }

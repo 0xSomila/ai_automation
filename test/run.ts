@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MemoryStore } from "../src/db/memory";
+import type { Engagement } from "../src/db/types";
 import { MemoryBackend } from "../src/booking/memory";
 import { MemoryNotifier } from "../src/channel/notifier";
 import { handleMessage } from "../src/handler";
@@ -19,6 +20,7 @@ interface Turn {
   customer: string;
   expectTool?: string;
   expectReply?: string[];
+  expectBooking?: Pick<Engagement, "kind" | "service" | "party">;
 }
 interface Case {
   name: string;
@@ -33,6 +35,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const dir = join(here, "conversations");
 const dry = process.argv.includes("--dry");
 
+class ConversationStore extends MemoryStore {
+  readonly created: Engagement[] = [];
+
+  override async createEngagement(input: Omit<Engagement, "id">): Promise<Engagement> {
+    const engagement = await super.createEngagement(input);
+    this.created.push(engagement);
+    return engagement;
+  }
+}
+
 function loadCases(): { file: string; data: Case }[] {
   return readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
@@ -42,11 +54,14 @@ function loadCases(): { file: string; data: Case }[] {
 
 async function runCase(c: Case): Promise<string[]> {
   const failures: string[] = [];
-  const deps = { store: new MemoryStore(), backend: new MemoryBackend(), notifier: new MemoryNotifier() };
+  const store = new ConversationStore();
+  const deps = { store, backend: new MemoryBackend(), notifier: new MemoryNotifier() };
   const from = `test-${c.client}`;
 
   for (let i = 0; i < c.turns.length; i++) {
     const turn = c.turns[i];
+    const before = store.created.length;
+    const label = `turn ${i + 1}`;
     const toolsThisTurn: string[] = [];
     const reply = await handleMessage(
       deps,
@@ -56,12 +71,30 @@ async function runCase(c: Case): Promise<string[]> {
 
     if (turn.expectTool && !toolsThisTurn.includes(turn.expectTool)) {
       failures.push(
-        `turn ${i + 1}: expected tool "${turn.expectTool}", got [${toolsThisTurn.join(", ") || "none"}]`,
+        `${label}: expected tool "${turn.expectTool}", got [${toolsThisTurn.join(", ") || "none"}]`,
       );
     }
     for (const s of turn.expectReply ?? []) {
       if (!reply.toLowerCase().includes(s.toLowerCase())) {
-        failures.push(`turn ${i + 1}: reply missing "${s}". Reply was: ${reply}`);
+        failures.push(`${label}: reply missing "${s}". Reply was: ${reply}`);
+      }
+    }
+    if (turn.expectBooking) {
+      const bookings = store.created.slice(before).filter(({ status }) => status === "confirmed");
+      if (bookings.length !== 1) {
+        failures.push(`${label}: expected one confirmed booking, got ${bookings.length}`);
+        continue;
+      }
+
+      const [booking] = bookings;
+      for (const field of ["kind", "service", "party"] as const) {
+        const expected = turn.expectBooking[field];
+        if (expected !== undefined && booking[field] !== expected) {
+          failures.push(`${label}: expected booking ${field} ${expected}, got ${booking[field]}`);
+        }
+      }
+      if (!booking.reference || !reply.includes(booking.reference)) {
+        failures.push(`${label}: reply missing the saved booking reference. Reply was: ${reply}`);
       }
     }
   }
@@ -69,6 +102,12 @@ async function runCase(c: Case): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  if (!dry && !process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+    console.error("Set ANTHROPIC_API_KEY in .env or in your environment to run the live conversation tests.");
+    process.exitCode = 1;
+    return;
+  }
+
   const cases = loadCases();
   let passed = 0;
   let failed = 0;

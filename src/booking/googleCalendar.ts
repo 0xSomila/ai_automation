@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { google } from "googleapis";
 import type { BookingBackend, BusyBlock } from "./adapter";
+import { practiceDay } from "./time";
 
 export interface GoogleCalendarOptions {
   calendarId?: string;
@@ -14,30 +16,59 @@ export class GoogleCalendarBackend implements BookingBackend {
   private timeZone: string;
 
   constructor(opts: GoogleCalendarOptions = {}) {
-    const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!);
+    const inlineKey = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const calendarId = opts.calendarId ?? process.env.GOOGLE_CALENDAR_ID;
+    if (!calendarId) throw new Error("Set GOOGLE_CALENDAR_ID to the booking calendar ID.");
+    if (!inlineKey && !keyFile) {
+      throw new Error("Set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SERVICE_ACCOUNT_JSON for Google Calendar.");
+    }
+
+    // Parse errors can include part of the JSON. Keep credential contents out of logs.
+    let creds;
+    try {
+      creds = JSON.parse(inlineKey || readFileSync(keyFile!, "utf8"));
+    } catch {
+      throw new Error("Could not read Google Calendar service account JSON. Check the file path or JSON format.");
+    }
+    if (typeof creds?.client_email !== "string" || typeof creds?.private_key !== "string") {
+      throw new Error("Google Calendar credentials must contain the service account email and private key.");
+    }
     const auth = new google.auth.JWT({
       email: creds.client_email,
       key: creds.private_key,
-      scopes: ["https://www.googleapis.com/auth/calendar"],
+      scopes: [
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+      ],
     });
     this.calendar = google.calendar({ version: "v3", auth });
-    this.calendarId = opts.calendarId ?? process.env.GOOGLE_CALENDAR_ID!;
+    this.calendarId = calendarId;
     this.timeZone = opts.timeZone ?? process.env.TZ ?? "Africa/Johannesburg";
   }
 
-  async getBusy(dateISO: string): Promise<BusyBlock[]> {
-    const timeMin = new Date(`${dateISO}T00:00:00`).toISOString();
-    const timeMax = new Date(`${dateISO}T23:59:59`).toISOString();
+  async getBusy(dateISO: string, timeZone = this.timeZone): Promise<BusyBlock[]> {
+    const [start, end] = practiceDay(dateISO, timeZone);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return [];
+    const timeMin = new Date(start).toISOString();
+    const timeMax = new Date(end).toISOString();
     const res = await this.calendar.freebusy.query({
       requestBody: {
         timeMin,
         timeMax,
-        timeZone: this.timeZone,
+        timeZone,
         items: [{ id: this.calendarId }],
       },
     });
-    const busy = res.data.calendars?.[this.calendarId]?.busy ?? [];
-    return busy.map((b) => ({ start: b.start!, end: b.end! }));
+    const calendar = res.data.calendars?.[this.calendarId];
+    if (!calendar || calendar.errors?.length || !Array.isArray(calendar.busy)) {
+      const reasons = calendar?.errors?.map(({ reason }) => reason).filter(Boolean).join(", ");
+      throw new Error(`Google Calendar did not return booking availability${reasons ? ` (${reasons})` : ""}. Check the calendar ID and sharing permissions.`);
+    }
+    return calendar.busy.map(({ start, end }) => {
+      if (!start || !end) throw new Error("Google Calendar returned an incomplete busy interval.");
+      return { start, end };
+    });
   }
 
   async createEvent(input: {
@@ -60,6 +91,26 @@ export class GoogleCalendarBackend implements BookingBackend {
   }
 
   async cancelEvent(eventId: string): Promise<void> {
+    if (this.calendarId === process.env.MERIDIAN_RETENTION_CALENDAR_ID) {
+      await this.eraseEvent(eventId);
+      return;
+    }
     await this.calendar.events.delete({ calendarId: this.calendarId, eventId });
+  }
+
+  async eraseEvent(eventId: string): Promise<void> {
+    try {
+      // Google Calendar can retain deleted events in Trash. Clear the booking title first.
+      await this.calendar.events.patch({
+        calendarId: this.calendarId,
+        eventId,
+        sendUpdates: "none",
+        requestBody: { summary: "Expired pilot appointment", description: "", location: "" },
+      });
+      await this.calendar.events.delete({ calendarId: this.calendarId, eventId, sendUpdates: "none" });
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (status !== 404 && status !== 410) throw error;
+    }
   }
 }

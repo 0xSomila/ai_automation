@@ -1,4 +1,5 @@
 import type { BookingBackend, BusyBlock } from "./adapter";
+import { practiceDay } from "./time";
 
 // In-memory calendar for dev and the chat harness. Starts fully open;
 // each booking adds a busy block so repeat calls see the slot taken.
@@ -6,8 +7,9 @@ export class MemoryBackend implements BookingBackend {
   private busy: BusyBlock[] = [];
   private seq = 0;
 
-  async getBusy(dateISO: string): Promise<BusyBlock[]> {
-    return this.busy.filter((b) => b.start.startsWith(dateISO));
+  async getBusy(dateISO: string, timeZone = "UTC"): Promise<BusyBlock[]> {
+    const [start, end] = practiceDay(dateISO, timeZone);
+    return this.busy.filter((block) => Date.parse(block.start) < end && Date.parse(block.end) > start);
   }
 
   async createEvent(input: {

@@ -10,12 +10,14 @@
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "check:env": "tsx src/checkEnv.ts",
+    "retention:calendar": "tsx src/retentionCalendar.ts",
     "onboard": "tsx src/onboard.ts",
     "test:conversations": "tsx test/run.ts",
     "test:reminders": "tsx test/reminders.ts",
     "test:routing": "tsx test/routing.ts",
     "test:lifecycle": "tsx test/lifecycle.ts",
-    "test:covers": "tsx test/covers.ts"
+    "test:covers": "tsx test/covers.ts",
+    "test:booking-integration": "tsx test/bookingIntegration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.1",

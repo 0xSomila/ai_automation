@@ -8,7 +8,7 @@ export interface BusyBlock {
 // implementation per client (Google Calendar, a practice-management
 // system, an in-memory dev stub) without touching the brain or tools.
 export interface BookingBackend {
-  getBusy(dateISO: string): Promise<BusyBlock[]>;
+  getBusy(dateISO: string, timeZone?: string): Promise<BusyBlock[]>;
   createEvent(input: {
     service: string;
     name: string;

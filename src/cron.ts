@@ -179,7 +179,7 @@ export async function runWaitlist(deps: Deps): Promise<CronResult> {
   for (const w of waiting) {
     try {
       const config = await getConfig(w.businessId);
-      const busy = await deps.backend.getBusy(w.date);
+      const busy = await deps.backend.getBusy(w.date, config.practice.timezone);
       const open = computeOpenSlots(config, w.date, busy);
       if (open.length === 0) {
         result.skipped++; // still full, keep waiting

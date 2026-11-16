@@ -3,8 +3,8 @@
   "vertical": "restaurant",
   "client": "harbour",
   "turns": [
-    { "customer": "Do you have space for dinner on Friday?" },
-    { "customer": "A table for six please", "expectTool": "check_availability" },
-    { "customer": "7pm is perfect, under the name Sipho", "expectTool": "book_appointment", "expectReply": ["confirm"] }
+    { "customer": "Hi, do you take dinner reservations?" },
+    { "customer": "Is 7pm next Friday available for a table of six?", "expectTool": "check_availability" },
+    { "customer": "Please book that table for six at 7pm next Friday under Sipho.", "expectTool": "book_appointment", "expectBooking": { "kind": "reservation", "party": 6 } }
   ]
 }
