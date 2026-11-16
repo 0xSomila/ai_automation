@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "./client";
 import type {
   CronRun,
   CronRunResult,
@@ -30,21 +31,15 @@ export class SupabaseStore implements Store {
   private db: SupabaseClient;
 
   constructor() {
-    this.db = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+    this.db = createSupabaseServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
   }
 
   async getOrCreateCustomer(businessId: string, waPhone: string): Promise<Customer> {
-    const { data: existing } = await this.db
-      .from("customers")
-      .select("id, wa_phone, name")
-      .eq("business_id", businessId)
-      .eq("wa_phone", waPhone)
-      .maybeSingle();
-    if (existing) return { id: existing.id, waPhone: existing.wa_phone, name: existing.name };
-
     const { data, error } = await this.db
       .from("customers")
-      .insert({ business_id: businessId, wa_phone: waPhone })
+      .upsert({ business_id: businessId, wa_phone: waPhone, last_seen: new Date().toISOString() }, {
+        onConflict: "business_id,wa_phone",
+      })
       .select("id, wa_phone, name")
       .single();
     if (error) throw error;

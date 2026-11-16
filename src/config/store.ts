@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../db/client";
 import type { Config } from "./types";
 import { loadConfig, resolveBusinessByPhoneNumberId as resolveFromFiles } from "./load";
 
@@ -16,7 +17,7 @@ const clientsDir = join(here, "..", "..", "clients");
 let supa: SupabaseClient | null = null;
 function db(): SupabaseClient | null {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
-  if (!supa) supa = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+  if (!supa) supa = createSupabaseServerClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
   return supa;
 }
 

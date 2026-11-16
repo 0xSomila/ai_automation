@@ -54,6 +54,15 @@ async function main(): Promise<void> {
   );
   assert.strictEqual(booked.status, "confirmed", "booking should confirm");
   assert.ok(booked.reference, "booking returns a reference");
+  const saved = await store.findEngagementByReference(ctx.businessId, booked.reference);
+  const startsAt = saved?.startsAt;
+  assert.ok(startsAt, "booking has a saved start time");
+  assert.ok(startsAt.endsWith("Z"), "booking is stored as a UTC instant");
+  const savedTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: config.practice.timezone,
+    timeStyle: "short",
+  }).format(new Date(startsAt));
+  assert.strictEqual(savedTime, slot1.time, "stored instant preserves the local booking time");
 
   const slot2 = await firstOpen(ctx, [slot1.date]);
   const moved = await call(

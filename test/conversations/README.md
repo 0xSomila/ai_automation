@@ -4,8 +4,8 @@ One folder of cases per vertical. Each case is a JSON script: an ordered list of
 customer turns and what the receptionist must get right (a tool it should call,
 a fact it must not invent, a confirmation it must give).
 
-Run them against the handler with the backend stubbed to deterministic
-availability, so the same script gives the same result every time.
+Run them against the handler with the live Claude API and fresh in-memory
+booking and storage adapters.
 
 Case shape:
 
@@ -16,16 +16,16 @@ Case shape:
   "client": "meridian",
   "turns": [
     { "customer": "hi, do you take new patients?" },
-    { "customer": "I'd like a first appointment this week", "expectTool": "check_availability" },
-    { "customer": "Tuesday morning works", "expectTool": "book_appointment", "expectReply": ["reference", "Tuesday"] }
+    { "customer": "Is 9am next Tuesday available for an initial consultation?", "expectTool": "check_availability" },
+    { "customer": "Please book that slot. My name is Thandi.", "expectTool": "book_appointment", "expectBooking": { "kind": "appointment", "service": "Initial consultation" } }
   ]
 }
 ```
 
 `expectTool` asserts the brain called that tool on that turn. `expectReply`
-asserts the reply contains each string (case-insensitive). Keep assertions about
-behaviour, not exact wording. Tools in the current build: `check_availability`,
-`book_appointment`.
+asserts the reply contains each string (case-insensitive). `expectBooking` asserts
+that the turn saved exactly one confirmed booking with the given `kind`, optional
+`service` and optional `party`, and that the reply includes its saved reference.
 
 ## Running
 

@@ -6,6 +6,7 @@ import "dotenv/config";
 
 interface Check {
   key: string;
+  alternative?: string;
   required: boolean;
   group: string;
 }
@@ -23,7 +24,7 @@ const checks: Check[] = [
   { key: "WHATSAPP_APP_SECRET", required: true, group: "whatsapp" },
 
   { key: "GOOGLE_CALENDAR_ID", required: true, group: "calendar" },
-  { key: "GOOGLE_SERVICE_ACCOUNT_JSON", required: true, group: "calendar" },
+  { key: "GOOGLE_SERVICE_ACCOUNT_JSON", alternative: "GOOGLE_APPLICATION_CREDENTIALS", required: true, group: "calendar" },
 
   { key: "N8N_WEBHOOK_SECRET", required: true, group: "scheduling" },
   { key: "PORT", required: false, group: "runtime" },
@@ -37,10 +38,11 @@ function main(): void {
       console.log(`\n[${c.group}]`);
       lastGroup = c.group;
     }
-    const present = Boolean(process.env[c.key]);
+    const present = Boolean(process.env[c.key] || (c.alternative && process.env[c.alternative]));
     const mark = present ? "ok  " : c.required ? "MISS" : "--  ";
     if (!present && c.required) missing++;
-    console.log(`  ${mark} ${c.key}${!present && !c.required ? " (optional)" : ""}`);
+    const label = c.alternative ? `${c.key} or ${c.alternative}` : c.key;
+    console.log(`  ${mark} ${label}${!present && !c.required ? " (optional)" : ""}`);
   }
 
   if (missing > 0) {

@@ -1,14 +1,13 @@
 import type { Config, DayKey } from "../config/types";
 import type { BusyBlock } from "./adapter";
 import type { ReservationLoad } from "../db/types";
+import { practiceTime } from "./time";
 
 const DAY_KEYS: DayKey[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 function weekdayKey(dateISO: string): DayKey {
-  // Anchor at noon to avoid timezone date-flips. Server is assumed to run
-  // in the practice timezone; see CLAUDE.md for the production note.
-  const d = new Date(`${dateISO}T12:00:00`);
-  return DAY_KEYS[d.getDay()];
+  const d = new Date(`${dateISO}T12:00:00Z`);
+  return DAY_KEYS[d.getUTCDay()];
 }
 
 function toMinutes(hhmm: string): number {
@@ -37,8 +36,9 @@ export function computeOpenSlots(
   if (!hours) return []; // closed that day
 
   const horizon = new Date(now.getTime() + config.booking.maxDaysAhead * 864e5);
-  const dayStart = new Date(`${dateISO}T00:00:00`);
-  if (dayStart > horizon) return [];
+  const timeZone = config.practice.timezone;
+  const dayStart = practiceTime(dateISO, "00:00", timeZone);
+  if (!Number.isFinite(dayStart) || dayStart > horizon.getTime()) return [];
 
   const earliest = new Date(now.getTime() + config.booking.leadTimeHours * 36e5);
   const [open, close] = hours;
@@ -52,9 +52,8 @@ export function computeOpenSlots(
   const slots: string[] = [];
   for (let m = toMinutes(open); m + step <= toMinutes(close); m += step) {
     const time = fromMinutes(m);
-    const slotStart = new Date(`${dateISO}T${time}:00`);
-    if (slotStart < earliest) continue;
-    const t = slotStart.getTime();
+    const t = practiceTime(dateISO, time, timeZone);
+    if (!Number.isFinite(t) || t < earliest.getTime()) continue;
     const covered = busyRanges.some(([bs, be]) => t >= bs && t < be);
     if (!covered) slots.push(time);
   }

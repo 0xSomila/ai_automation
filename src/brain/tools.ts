@@ -4,6 +4,7 @@ import type { BookingBackend } from "../booking/adapter";
 import type { Store } from "../db/types";
 import type { Pack } from "./pack";
 import { computeOpenSlots, computeCoversSlots } from "../booking/availability";
+import { practiceTime } from "../booking/time";
 
 export interface ToolCtx {
   config: Config;
@@ -109,6 +110,7 @@ export async function executeTool(
   ctx: ToolCtx,
 ): Promise<string> {
   const isCovers = ctx.pack.resourceModel.kind === "covers";
+  const timeZone = ctx.config.practice.timezone;
 
   if (name === "check_availability") {
     const date = String(input.date ?? "").trim();
@@ -116,7 +118,7 @@ export async function executeTool(
 
     const open = isCovers
       ? computeCoversSlots(ctx.config, date, await ctx.store.reservationsOn(ctx.businessId, date), party)
-      : computeOpenSlots(ctx.config, date, await ctx.backend.getBusy(date));
+      : computeOpenSlots(ctx.config, date, await ctx.backend.getBusy(date, timeZone));
 
     if (open.length === 0) {
       return JSON.stringify({
@@ -173,7 +175,7 @@ export async function executeTool(
     }
 
     // Single / per-staff: calendar-backed slot booking.
-    const busy = await ctx.backend.getBusy(date);
+    const busy = await ctx.backend.getBusy(date, timeZone);
     const open = computeOpenSlots(ctx.config, date, busy);
     if (!open.includes(time)) {
       return JSON.stringify({
@@ -185,7 +187,7 @@ export async function executeTool(
     const svc = resolveService(ctx, service);
     const durationMin = svc?.durationMin ?? ctx.config.booking.slotStepMin;
 
-    const startISO = `${date}T${time}:00`;
+    const startISO = new Date(practiceTime(date, time, timeZone)).toISOString();
     const { eventId } = await ctx.backend.createEvent({
       service,
       name: name_,
@@ -218,7 +220,7 @@ export async function executeTool(
     }
 
     // Re-validate the new slot against live availability. Never trust the model.
-    const busy = await ctx.backend.getBusy(date);
+    const busy = await ctx.backend.getBusy(date, timeZone);
     const open = computeOpenSlots(ctx.config, date, busy);
     if (!open.includes(time)) {
       return JSON.stringify({
@@ -229,7 +231,7 @@ export async function executeTool(
 
     const durationMin =
       eng.durationMin ?? resolveService(ctx, eng.service ?? "")?.durationMin ?? ctx.config.booking.slotStepMin;
-    const startISO = `${date}T${time}:00`;
+    const startISO = new Date(practiceTime(date, time, timeZone)).toISOString();
 
     // Book the new slot, then release the old one, then update the record.
     const { eventId } = await ctx.backend.createEvent({

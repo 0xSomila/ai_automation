@@ -31,7 +31,8 @@ The Core is `src/server.ts` (Express). It needs a public HTTPS URL and to stay r
 
 Required env: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `WHATSAPP_TOKEN`,
 `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`,
-`GOOGLE_CALENDAR_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `N8N_WEBHOOK_SECRET`.
+`GOOGLE_CALENDAR_ID`, `N8N_WEBHOOK_SECRET`, and either `GOOGLE_SERVICE_ACCOUNT_JSON` or
+`GOOGLE_APPLICATION_CREDENTIALS` (the path to the service account key file on the host).
 
 With Supabase and Google env set, the Core auto-selects the Supabase store and the Google
 Calendar backend. With WhatsApp env set, it sends via the WhatsApp notifier.
