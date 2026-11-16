@@ -101,6 +101,15 @@ export class MemoryStore implements Store {
     );
   }
 
+  async upcomingBookings(businessId: string, customerId: string, nowISO: string): Promise<Engagement[]> {
+    const now = Date.parse(nowISO);
+    return this.engagements.filter((booking) =>
+      booking.businessId === businessId && booking.customerId === customerId &&
+      booking.status === "confirmed" && (booking.kind === "appointment" || booking.kind === "reservation") &&
+      booking.startsAt && Date.parse(booking.startsAt) >= now,
+    ).sort((a, b) => Date.parse(a.startsAt!) - Date.parse(b.startsAt!));
+  }
+
   async updateEngagement(id: string, patch: Partial<Engagement>): Promise<void> {
     const e = this.engagements.find((x) => x.id === id);
     if (e) Object.assign(e, patch);

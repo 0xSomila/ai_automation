@@ -79,6 +79,7 @@ export interface Store {
 
   // Booking lifecycle (reschedule, cancel, waitlist).
   findEngagementByReference(businessId: string, reference: string): Promise<Engagement | null>;
+  upcomingBookings(businessId: string, customerId: string, nowISO: string): Promise<Engagement[]>;
   updateEngagement(id: string, patch: Partial<Engagement>): Promise<void>;
 
   // Follow-up (daily): past confirmed/completed engagements with no follow-up sent.

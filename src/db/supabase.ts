@@ -14,6 +14,23 @@ import type {
   Store,
 } from "./types";
 
+const BOOKING_COLUMNS = "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id";
+
+function rowToEngagement(row: any): Engagement {
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    customerId: row.customer_id,
+    kind: row.kind,
+    service: row.service ?? undefined,
+    startsAt: row.starts_at ?? undefined,
+    durationMin: row.duration_min ?? undefined,
+    status: row.status,
+    reference: row.reference ?? undefined,
+    backendEventId: row.backend_event_id ?? undefined,
+  };
+}
+
 function rowToDueMessage(r: any): DueMessage {
   return {
     engagementId: r.id,
@@ -153,26 +170,25 @@ export class SupabaseStore implements Store {
   ): Promise<Engagement | null> {
     const { data, error } = await this.db
       .from("engagements")
-      .select(
-        "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id",
-      )
+      .select(BOOKING_COLUMNS)
       .eq("business_id", businessId)
       .eq("reference", reference)
       .maybeSingle();
     if (error) throw error;
-    if (!data) return null;
-    return {
-      id: data.id,
-      businessId: data.business_id,
-      customerId: data.customer_id,
-      kind: data.kind,
-      service: data.service ?? undefined,
-      startsAt: data.starts_at ?? undefined,
-      durationMin: data.duration_min ?? undefined,
-      status: data.status,
-      reference: data.reference ?? undefined,
-      backendEventId: data.backend_event_id ?? undefined,
-    };
+    return data ? rowToEngagement(data) : null;
+  }
+
+  async upcomingBookings(businessId: string, customerId: string, nowISO: string): Promise<Engagement[]> {
+    const { data, error } = await this.db.from("engagements")
+      .select(BOOKING_COLUMNS)
+      .eq("business_id", businessId)
+      .eq("customer_id", customerId)
+      .eq("status", "confirmed")
+      .in("kind", ["appointment", "reservation"])
+      .gte("starts_at", nowISO)
+      .order("starts_at");
+    if (error) throw error;
+    return (data ?? []).map(rowToEngagement);
   }
 
   async updateEngagement(id: string, patch: Partial<Engagement>): Promise<void> {

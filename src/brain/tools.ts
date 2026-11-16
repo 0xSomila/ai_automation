@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Config } from "../config/types";
 import type { BookingBackend } from "../booking/adapter";
-import type { Store } from "../db/types";
+import type { Engagement, Store } from "../db/types";
 import type { Pack } from "./pack";
 import { computeOpenSlots, computeCoversSlots } from "../booking/availability";
 import { practiceTime } from "../booking/time";
@@ -49,7 +49,7 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
   reschedule_appointment: {
     name: "reschedule_appointment",
     description:
-      "Moves an existing appointment to a new open time. Needs the booking reference and the new date and time. Re-validates the new time first. Returns the updated booking or an unavailable status.",
+      "Moves the customer's appointment to a selected new open date and time. Use the reference from the customer's booking lookup if available. With no reference, proceeds only if the customer has one upcoming booking.",
     input_schema: {
       type: "object",
       properties: {
@@ -57,18 +57,22 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
         date: { type: "string", description: "New date YYYY-MM-DD" },
         time: { type: "string", description: "New time HH:MM" },
       },
-      required: ["reference", "date", "time"],
+      required: ["date", "time"],
     },
   },
   cancel_appointment: {
     name: "cancel_appointment",
     description:
-      "Cancels an existing appointment by its booking reference. Returns a cancelled status, or not_found if the reference is unknown.",
+      "Cancels the customer's appointment after a clear cancellation request. Use the reference from the customer's booking lookup if available. With no reference, proceeds only if the customer has one upcoming booking.",
     input_schema: {
       type: "object",
       properties: { reference: { type: "string", description: "The booking reference" } },
-      required: ["reference"],
     },
+  },
+  list_upcoming_bookings: {
+    name: "list_upcoming_bookings",
+    description: "Finds upcoming appointments for the sender of this chat. Use for booking questions and for cancellation or postponement requests without a reference. The sender never needs to supply a reference to use this tool.",
+    input_schema: { type: "object", properties: {} },
   },
   join_waitlist: {
     name: "join_waitlist",
@@ -100,6 +104,24 @@ function resolveService(ctx: ToolCtx, service: string) {
   );
 }
 
+function describeBooking(booking: Engagement) {
+  return { reference: booking.reference, service: booking.service, startsAt: booking.startsAt };
+}
+
+async function findBooking(ctx: ToolCtx, reference: string): Promise<Engagement | string> {
+  if (reference) {
+    const booking = await ctx.store.findEngagementByReference(ctx.businessId, reference);
+    if (booking?.customerId === ctx.customerId && booking.status === "confirmed") return booking;
+  } else {
+    const bookings = await ctx.store.upcomingBookings(ctx.businessId, ctx.customerId, new Date().toISOString());
+    if (bookings.length === 1) return bookings[0];
+    if (bookings.length > 1) {
+      return JSON.stringify({ status: "needs_selection", bookings: bookings.map(describeBooking) });
+    }
+  }
+  return JSON.stringify({ status: "not_found", message: "No matching active booking for this customer." });
+}
+
 export function toolDefs(toolNames: string[]): Anthropic.Tool[] {
   return toolNames.map((n) => ALL_TOOLS[n]).filter(Boolean);
 }
@@ -111,6 +133,11 @@ export async function executeTool(
 ): Promise<string> {
   const isCovers = ctx.pack.resourceModel.kind === "covers";
   const timeZone = ctx.config.practice.timezone;
+
+  if (name === "list_upcoming_bookings") {
+    const bookings = await ctx.store.upcomingBookings(ctx.businessId, ctx.customerId, new Date().toISOString());
+    return JSON.stringify({ timeZone, bookings: bookings.map(describeBooking) });
+  }
 
   if (name === "check_availability") {
     const date = String(input.date ?? "").trim();
@@ -210,13 +237,17 @@ export async function executeTool(
   }
 
   if (name === "reschedule_appointment") {
-    const reference = String(input.reference ?? "").trim();
+    const reference = String(input.reference ?? "").trim().toUpperCase();
     const date = String(input.date ?? "").trim();
     const time = String(input.time ?? "").trim();
 
-    const eng = await ctx.store.findEngagementByReference(ctx.businessId, reference);
-    if (!eng || eng.status === "cancelled") {
-      return JSON.stringify({ status: "not_found", message: "No active booking for that reference." });
+    const eng = await findBooking(ctx, reference);
+    if (typeof eng === "string") return eng;
+    const durationMin =
+      eng.durationMin ?? resolveService(ctx, eng.service ?? "")?.durationMin ?? ctx.config.booking.slotStepMin;
+    const start = practiceTime(date, time, timeZone);
+    if (start === Date.parse(eng.startsAt ?? "")) {
+      return JSON.stringify({ status: "unchanged", reference: eng.reference, service: eng.service, date, time });
     }
 
     // Re-validate the new slot against live availability. Never trust the model.
@@ -229,49 +260,37 @@ export async function executeTool(
       });
     }
 
-    const durationMin =
-      eng.durationMin ?? resolveService(ctx, eng.service ?? "")?.durationMin ?? ctx.config.booking.slotStepMin;
-    const startISO = new Date(practiceTime(date, time, timeZone)).toISOString();
+    const startISO = new Date(start).toISOString();
 
-    // Book the new slot, then release the old one, then update the record.
-    const { eventId } = await ctx.backend.createEvent({
-      service: eng.service ?? "appointment",
-      name: "",
-      startISO,
-      durationMin,
-    });
-    if (eng.backendEventId) {
-      try {
-        await ctx.backend.cancelEvent(eng.backendEventId);
-      } catch (e) {
-        console.error("reschedule: failed to cancel old event", (e as Error).message);
-      }
+    const canMove = eng.backendEventId && eng.startsAt;
+    const eventId = canMove
+      ? eng.backendEventId!
+      : (await ctx.backend.createEvent({ service: eng.service ?? "appointment", name: "", startISO, durationMin })).eventId;
+    if (canMove) await ctx.backend.moveEvent(eventId, startISO, durationMin);
+    try {
+      await ctx.store.updateEngagement(eng.id, {
+        startsAt: startISO,
+        durationMin,
+        backendEventId: eventId,
+        reminderSentAt: undefined,
+        followupSentAt: undefined,
+      });
+    } catch (error) {
+      if (canMove) await ctx.backend.moveEvent(eventId, eng.startsAt!, durationMin);
+      else await ctx.backend.cancelEvent(eventId);
+      throw error;
     }
-    await ctx.store.updateEngagement(eng.id, {
-      startsAt: startISO,
-      durationMin,
-      backendEventId: eventId,
-      reminderSentAt: undefined, // a moved booking earns a fresh reminder
-    });
-    return JSON.stringify({ status: "confirmed", reference, service: eng.service, date, time });
+    return JSON.stringify({ status: "confirmed", reference: eng.reference, service: eng.service, date, time });
   }
 
   if (name === "cancel_appointment") {
-    const reference = String(input.reference ?? "").trim();
-    const eng = await ctx.store.findEngagementByReference(ctx.businessId, reference);
-    if (!eng || eng.status === "cancelled") {
-      return JSON.stringify({ status: "not_found", message: "No active booking for that reference." });
-    }
-    if (eng.backendEventId) {
-      try {
-        await ctx.backend.cancelEvent(eng.backendEventId);
-      } catch (e) {
-        console.error("cancel: failed to cancel event", (e as Error).message);
-      }
-    }
+    const reference = String(input.reference ?? "").trim().toUpperCase();
+    const eng = await findBooking(ctx, reference);
+    if (typeof eng === "string") return eng;
+    if (eng.backendEventId) await ctx.backend.cancelEvent(eng.backendEventId);
     await ctx.store.updateEngagement(eng.id, { status: "cancelled" });
     // The freed slot is offered to the waitlist by the waitlist job (within ~15 min).
-    return JSON.stringify({ status: "cancelled", reference });
+    return JSON.stringify({ status: "cancelled", reference: eng.reference, service: eng.service, startsAt: eng.startsAt });
   }
 
   if (name === "join_waitlist") {

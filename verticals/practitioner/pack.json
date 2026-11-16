@@ -11,6 +11,7 @@
   "tools": [
     "check_availability",
     "book_appointment",
+    "list_upcoming_bookings",
     "reschedule_appointment",
     "cancel_appointment"
   ],

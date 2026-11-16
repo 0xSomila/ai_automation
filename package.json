@@ -17,6 +17,7 @@
     "test:routing": "tsx test/routing.ts",
     "test:lifecycle": "tsx test/lifecycle.ts",
     "test:covers": "tsx test/covers.ts",
+    "demo:notifications": "tsx test/notificationDemo.ts",
     "test:booking-integration": "tsx test/bookingIntegration.ts"
   },
   "dependencies": {

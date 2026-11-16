@@ -90,12 +90,29 @@ export class GoogleCalendarBackend implements BookingBackend {
     return { eventId: res.data.id! };
   }
 
+  async moveEvent(eventId: string, startISO: string, durationMin: number): Promise<void> {
+    const end = new Date(Date.parse(startISO) + durationMin * 60_000);
+    await this.calendar.events.patch({
+      calendarId: this.calendarId,
+      eventId,
+      requestBody: {
+        start: { dateTime: startISO, timeZone: this.timeZone },
+        end: { dateTime: end.toISOString(), timeZone: this.timeZone },
+      },
+    });
+  }
+
   async cancelEvent(eventId: string): Promise<void> {
     if (this.calendarId === process.env.MERIDIAN_RETENTION_CALENDAR_ID) {
       await this.eraseEvent(eventId);
       return;
     }
-    await this.calendar.events.delete({ calendarId: this.calendarId, eventId });
+    try {
+      await this.calendar.events.delete({ calendarId: this.calendarId, eventId });
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (status !== 404 && status !== 410) throw error;
+    }
   }
 
   async eraseEvent(eventId: string): Promise<void> {

@@ -1,10 +1,13 @@
 {
-  "name": "books an initial consultation and gets a reference",
+  "name": "books, postpones, and cancels an initial consultation using everyday language",
   "vertical": "practitioner",
   "client": "meridian",
   "turns": [
     { "customer": "Hi, are you taking new patients?" },
     { "customer": "Is 9am next Tuesday available for an initial consultation?", "expectTool": "check_availability" },
-    { "customer": "Please book that 9am slot next Tuesday. My name is Thandi.", "expectTool": "book_appointment", "expectBooking": { "kind": "appointment", "service": "Initial consultation" } }
+    { "customer": "Please book that 9am slot next Tuesday. My name is Thandi.", "expectTool": "book_appointment", "expectBooking": { "kind": "appointment", "service": "Initial consultation" } },
+    { "customer": "I need to postpone my appointment.", "expectTool": "list_upcoming_bookings" },
+    { "customer": "Move it to 10am on the Thursday after my Tuesday appointment, please.", "expectTool": "reschedule_appointment", "expectReply": ["C7-"] },
+    { "customer": "Actually, please cancel my appointment.", "expectTool": "cancel_appointment", "expectReply": ["C7-"] }
   ]
 }
