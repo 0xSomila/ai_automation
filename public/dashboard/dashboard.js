@@ -30,8 +30,9 @@ const timeOf = iso => new Intl.DateTimeFormat("en-GB", {timeZone:"Africa/Johanne
 const dateOf = iso => new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Johannesburg",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(iso));
 const initials = name => name.replace(/^Dr /, "").split(/\s+/).map(p => p[0]).slice(0,2).join("");
 const team = [{id:"nandi",name:"Dr Nandi Mokoena",role:"Physiotherapist",speciality:"General & sports rehabilitation"},{id:"alex",name:"Dr Alex Scott",role:"Physiotherapist",speciality:"Movement & recovery"}];
-let state = {view:"calendar",date:today(),period:"day",filter:"all",mode:"demo",appointments:[],activities:[],search:"",status:"all",thread:"casey",takeover:false,scenario:0,token:"",auth:"",lastSync:null};
-let toastTimer, pollTimer, drawerReturnFocus, loadVersion = 0;
+const hostedPilot = !["localhost","127.0.0.1","[::1]"].includes(location.hostname);
+let state = {view:"calendar",date:today(),period:"day",filter:"all",mode:hostedPilot?"pilot":"demo",appointments:[],activities:[],search:"",status:"all",thread:"casey",takeover:false,scenario:0,token:"",auth:"",lastSync:null};
+let toastTimer, pollTimer, drawerReturnFocus, loadVersion = 0, pollInFlight = false;
 const extraMessages = [];
 function seed() {
   const d = today();
@@ -52,19 +53,20 @@ function visibleAppointments() {return state.appointments.filter(a => state.filt
 function practitioners() {return state.mode === "demo" ? team : [...new Set(state.appointments.map(a=>a.practitioner))].map(id => ({id,name:id === "unassigned" ? "Practice calendar" : id,role:id === "unassigned" ? "Practitioner not assigned" : "Pilot resource"}));}
 function practitionerName(id) {return practitioners().find(p=>p.id===id)?.name || "Practice calendar";}
 function render() {
+  const connected=state.mode==="pilot"&&Boolean(state.lastSync);
   const titles = {calendar:["YOUR PRACTICE AT A GLANCE","The day, taken care of.","Every appointment in view. Everyone on the same page."],appointments:["YOUR APPOINTMENT BOOK","A place for every patient.","Find a booking, check its details, keep the day moving."],inbox:["THE CONVERSATION CONTINUES","A human touch, when it matters.","See how your team can step into a patient conversation."],practitioners:["THE PEOPLE BEHIND THE PRACTICE","One team. A clearer day.","Separate schedules, shared visibility."]};
   const t=titles[state.view];$("#eyebrow").textContent=t[0];$("#page-title").textContent=t[1];$("#page-description").textContent=t[2];
   $("#breadcrumb").textContent=state.view[0].toUpperCase()+state.view.slice(1);
   document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===state.view);b.setAttribute("aria-current",b.dataset.view===state.view?"page":"false");});
   $("#demo-button").hidden=state.mode!=="demo";$("#reset-demo").hidden=state.mode!=="demo";
-  $("#refresh-pilot").hidden=state.mode!=="pilot";
+  $("#refresh-pilot").hidden=!connected;
   $(".nav-count").hidden=state.mode!=="demo";
-  $("#mode-label").innerHTML=`<i></i>${state.mode==="demo"?"Demo workspace":"Pilot · read-only"}`;
-  $("#banner-title").textContent=state.mode==="demo"?"A little preview of a calmer practice.":"Connected to the Meridian pilot.";
-  $("#banner-copy").textContent=state.mode==="demo"?"Fictional patients. Real possibilities.":"Read-only bookings. Refreshes every 30 seconds.";
-  $("#connect-button").innerHTML=icon(state.mode==="demo"?"link":"close")+(state.mode==="demo"?"Connect pilot":"Back to demo");
-  $("#footer-status").textContent=state.mode==="demo"?"Demo data · Changes stay in this tab":`Pilot bookings · Last loaded ${state.lastSync?timeOf(state.lastSync):"just now"} SAST`;
-  $("#content").innerHTML=state.view==="calendar"?calendar():state.view==="appointments"?appointmentList():state.view==="inbox"?inbox():practitionerList();
+  $("#mode-label").innerHTML=`<i></i>${state.mode==="demo"?"Demo workspace":connected?"WhatsApp pilot · live records":"WhatsApp pilot · sign-in required"}`;
+  $("#banner-title").textContent=state.mode==="demo"?"A little preview of a calmer practice.":connected?"Connected to Meridian’s WhatsApp bookings.":"Your Meridian appointment book.";
+  $("#banner-copy").textContent=state.mode==="demo"?"Fictional patients. Real possibilities.":connected?"Read-only. Checks for changes every 5 seconds.":"Sign in to see bookings from the WhatsApp test number.";
+  $("#connect-button").innerHTML=icon(connected?"close":"link")+(connected?(hostedPilot?"Sign out":"Back to demo"):(hostedPilot?"Sign in":"Connect pilot"));
+  $("#footer-status").textContent=state.mode==="demo"?"Demo data · Changes stay in this tab":connected?`WhatsApp bookings · Last checked ${timeOf(state.lastSync)} SAST`:"Protected practice workspace";
+  $("#content").innerHTML=hostedPilot&&!connected?`<section class="table-panel empty-state">${icon("calendar")}<strong>Your WhatsApp bookings belong here.</strong>Sign in above to load the practice’s stored appointments.</section>`:state.view==="calendar"?calendar():state.view==="appointments"?appointmentList():state.view==="inbox"?inbox():practitionerList();
   decorate();
 }
 function filterOptions() {return `<option value="all">All practitioners</option>${practitioners().map(p=>`<option value="${esc(p.id)}" ${state.filter===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}`;}
@@ -142,10 +144,11 @@ async function loadPilot() {
   const r=await fetch(`/dashboard/api/appointments?date=${encodeURIComponent(state.date)}`,{headers:state.token?{Authorization:`Bearer ${state.token}`}:{},credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(15000)});
   if(!r.ok)throw new Error(r.status===401?"Access denied. Check the dashboard access token.":r.status===503?"The pilot connection is not configured on this server yet.":"Could not load pilot bookings. Try again.");
   const data=await r.json();if(version!==loadVersion||!state.auth)return;
-  const connecting=state.mode!=="pilot";state.mode="pilot";state.appointments=data.appointments;state.lastSync=data.fetchedAt;
-  if(connecting){state.filter="all";state.search="";state.status="all";}render();
+  const connecting=!state.lastSync,changed=JSON.stringify(data.appointments)!==JSON.stringify(state.appointments);state.mode="pilot";state.appointments=data.appointments;state.lastSync=data.fetchedAt;
+  if(connecting){state.filter="all";state.search="";state.status="all";}
+  if(changed||connecting)render();else $("#footer-status").textContent=`WhatsApp bookings · Last checked ${timeOf(state.lastSync)} SAST`;
 }
-function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(state.mode==="pilot"&&!document.hidden)loadPilot().catch(()=>toast("Pilot refresh failed. Showing the last loaded bookings."));},30000);}
+function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(state.mode==="pilot"&&!document.hidden&&!pollInFlight){pollInFlight=true;loadPilot().catch(()=>toast("Pilot refresh failed. Showing the last loaded bookings.")).finally(()=>pollInFlight=false);}},5000);}
 async function changeDate(date) {const previous=state.date;state.date=date;if(state.mode==="pilot"){try{await loadPilot();}catch(e){state.date=previous;render();toast(e.message);}}else render();}
 document.addEventListener("click",e=>{
   const target=e.target.closest("button");if(!target)return;
@@ -186,7 +189,7 @@ document.addEventListener("submit",async e=>{
   }
   if(e.target.id==="connect-form"){
     e.preventDefault();state.token=$("#access-token").value;state.auth="token";$("#access-token").value="";const button=e.target.querySelector("[type=submit]");button.disabled=true;button.textContent="Connecting…";$("#connection-error").textContent="";
-    try{await loadPilot();$("#connection-panel").hidden=true;startPolling();toast("Pilot bookings connected. Read-only view.");}catch(error){state.token="";state.auth="";$("#connection-error").textContent=error.message;}finally{button.disabled=false;button.textContent="Connect";}
+    try{const session=await fetch("/dashboard/api/token-session",{method:"POST",headers:{Authorization:`Bearer ${state.token}`},credentials:"same-origin",signal:AbortSignal.timeout(15000)});if(!session.ok)throw new Error(session.status===401?"Access denied. Check your practice access key.":"Could not open a practice session.");state.token="";state.auth="session";await loadPilot();$("#connection-panel").hidden=true;startPolling();toast("WhatsApp booking records connected.");}catch(error){state.token="";state.auth="";$("#connection-error").textContent=error.message;}finally{button.disabled=false;button.textContent="Sign in";}
   }
 });
 $("#demo-button").addEventListener("click",scenario);
@@ -194,9 +197,9 @@ $("#reset-demo").addEventListener("click",()=>{seed();state.date=today();state.f
 $("#connect-button").addEventListener("click",async()=>{
   const button=$("#connect-button");button.disabled=true;
   try{
-    if(state.mode==="pilot"){
+    if(state.mode==="pilot"&&state.lastSync){
       await fetch("/dashboard/api/logout",{method:"POST",credentials:"same-origin",signal:AbortSignal.timeout(5000)});
-      clearInterval(pollTimer);loadVersion++;state.token="";state.auth="";state.mode="demo";state.date=today();state.filter="all";seed();render();toast("Returned to fictional demo data.");return;
+      clearInterval(pollTimer);loadVersion++;state.token="";state.auth="";state.lastSync=null;state.mode=hostedPilot?"pilot":"demo";state.date=today();state.filter="all";state.appointments=[];if(!hostedPilot)seed();render();if(hostedPilot)$("#connection-panel").hidden=false;toast(hostedPilot?"Signed out of the practice workspace.":"Returned to fictional demo data.");return;
     }
     const status=await fetch("/dashboard/api/session",{cache:"no-store",signal:AbortSignal.timeout(5000)}).then(r=>r.json());
     if(status.localAvailable||status.authenticated){
@@ -216,7 +219,8 @@ document.addEventListener("keydown",e=>{
     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   }
 });
-seed();render();
+if(!hostedPilot)seed();render();
+if(hostedPilot)$("#connection-panel").hidden=false;
 // An existing HttpOnly local session reconnects after refresh. No credential is
 // placed in a URL or browser storage, and opening the demo never mints a session.
-fetch("/dashboard/api/session",{cache:"no-store",signal:AbortSignal.timeout(5000)}).then(r=>r.json()).then(async status=>{if(status.authenticated&&!state.auth){state.auth="session";await loadPilot();startPolling();}}).catch(()=>{});
+fetch("/dashboard/api/session",{cache:"no-store",signal:AbortSignal.timeout(5000)}).then(r=>r.json()).then(async status=>{if(status.authenticated&&!state.auth){state.auth="session";await loadPilot();$("#connection-panel").hidden=true;startPolling();}}).catch(()=>{if(hostedPilot)$("#connection-error").textContent="The practice connection is unavailable. Please try again shortly.";});

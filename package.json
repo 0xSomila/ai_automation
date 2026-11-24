@@ -6,6 +6,7 @@
   "type": "module",
   "description": "C7 AI receptionist. One engine, many verticals. Model on the Claude Messages API.",
   "scripts": {
+    "test:dashboard-view": "tsx test/dashboardView.ts",
     "test:serverless": "tsx test/serverless.ts",
     "webhook:ingress": "tsx src/webhookIngressServer.ts",
     "test:webhook-ingress": "tsx test/webhookIngress.ts",

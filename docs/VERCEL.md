@@ -19,7 +19,9 @@ Configure these as Vercel environment variables, never as Git files:
 - `DASHBOARD_LOCAL_ACCESS=false`
 - `N8N_WEBHOOK_SECRET` if remote scheduled jobs will be enabled
 
-The hosted demo is public. Actual booking data requires the dashboard bearer token. Enter it through **Connect pilot**; the browser keeps it in memory only. Local HttpOnly sessions are not a hosted login method and should remain disabled in production. Individual staff accounts and role-based access remain future work.
+The hosted dashboard opens the actual pilot workspace and does not seed or display fictional sample appointments. Sign in with the separate practice access key (`DASHBOARD_ACCESS_TOKEN`) to read the same Meridian records written by WhatsApp. The key is exchanged for an eight-hour signed HttpOnly, Secure, SameSite=Strict cookie that works across Vercel instances; the key itself is cleared from browser memory after exchange. Sign-out clears this browser's cookie; rotating the access key invalidates all hosted sessions. Local one-click bootstrap must stay disabled in production. Individual staff accounts and role-based access remain future work.
+
+While connected and visible, the dashboard checks for changes every five seconds. These are periodic reads, not a WebSocket stream. An unchanged response does not redraw the calendar, so ordinary polling preserves the current interaction. A connection failure never substitutes sample data.
 
 ## Verify and cut over
 

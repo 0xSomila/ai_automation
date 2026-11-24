@@ -1,4 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { Anthropic } from "@anthropic-ai/sdk";
 import type { Config } from "../config/types.js";
 import type { BookingBackend } from "../booking/adapter.js";
 import type { Engagement, Store } from "../db/types.js";

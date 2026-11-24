@@ -4,7 +4,7 @@ Run `npm run dev`, then open http://localhost:3000/dashboard/.
 
 The local preview on 24 November 2026 runs at http://127.0.0.1:3100/dashboard/. The pilot connection was enabled and existing booking references and statuses were verified in the browser. The local Core remains on port 3100.
 
-The first version uses the approved forest green and warm-white concept. Its default workspace is a fictional Meridian demonstration. Demo actions stay in browser memory, reset on reload and do not call WhatsApp, Google Calendar or Supabase.
+The dashboard uses the approved forest green and warm-white concept. On localhost it offers the original fictional demonstration alongside the pilot connection. On the hosted domain it opens the protected actual WhatsApp booking workspace, with no sample appointments or demo controls. Demo actions on localhost stay in browser memory, reset on reload and do not call WhatsApp, Google Calendar or Supabase.
 
 ## Walkthrough
 
@@ -22,7 +22,7 @@ For optional remote access, set `DASHBOARD_ACCESS_TOKEN` to a separate cryptogra
 
 The API requires either a valid server-side session or the separate dashboard bearer token. The browser holds an entered bearer token in memory only and passes it in the Authorization header. It does not persist tokens or pilot booking data in browser storage. Use HTTPS for remote access. This is a single-workspace pilot access mechanism; individual staff accounts and roles remain future work.
 
-The endpoint returns up to 500 appointment records for seven days starting at the chosen SAST date, scoped on the server to one business. It includes patient booking names, service, resource, reference, date/time, status and reminder submission state. It does not return phone numbers, customer identifiers, chat contents, service keys or business configuration. The UI polls every 30 seconds while visible and connected. A failed refresh keeps the last successful snapshot, with a visible error and last-loaded time.
+The endpoint returns up to 500 appointment records for seven days starting at the chosen SAST date, scoped on the server to one business. It includes patient booking names, service, resource, reference, date/time, status and reminder submission state. It does not return phone numbers, customer identifiers, chat contents, service keys or business configuration. The UI polls every five seconds while visible and connected. A failed refresh keeps the last successful snapshot, with a visible error and last-loaded time. Hosted access exchanges the separate practice key for a signed eight-hour session cookie so reloads and different function instances can authenticate without exposing the key in browser storage.
 
 Pilot inbox and write actions remain unavailable. No assignment to fictional practitioners is inferred: records without a resource use **Practice calendar**. The calendar currently displays 08:00–17:00; the Appointments view includes records outside that range. Multi-practitioner calendar routing, live human handover and delivery receipts are separate integrations.
 

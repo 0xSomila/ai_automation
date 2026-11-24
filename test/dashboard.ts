@@ -20,7 +20,9 @@ const originalFetch = globalThis.fetch;
 try {
   const page = await fetch(`${base}/`);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /Fictional patients/);
+  const html = await page.text();
+  assert.match(html, /Protected practice workspace/);
+  assert(!html.includes("C7-DEMO"));
   assert.match(page.headers.get("content-security-policy")!, /frame-ancestors 'none'/);
   assert.equal(page.headers.get("cache-control"), "no-store");
   assert.equal((await fetch(`${base}/api/appointments?date=2026-11-24`)).status, 503);
@@ -49,6 +51,20 @@ try {
   assert.equal((await fetch(`${base}/api/appointments?date=2026-11-24`)).status, 401);
   assert.equal((await fetch(`${base}/api/appointments?date=2026-11-24`, {headers:{Authorization:`Bearer ${"x".repeat(token.length)}`}})).status, 401);
   const headers = {Authorization:`Bearer ${token}`};
+  assert.equal((await fetch(`${base}/api/token-session`, {method:"POST",headers})).status,403);
+  assert.equal((await fetch(`${base}/api/token-session`, {method:"POST",headers:{Origin:origin,Authorization:"Bearer invalid"}})).status,401);
+  const hostedSession = await fetch(`${base}/api/token-session`,{method:"POST",headers:{...headers,Origin:origin}});
+  assert.equal(hostedSession.status,200);
+  const hostedCookie=hostedSession.headers.get("set-cookie")!.split(";")[0];
+  const secondApp=express();secondApp.use("/dashboard",dashboardRouter());
+  const secondServer=secondApp.listen(0,"127.0.0.1");
+  await new Promise<void>(resolve=>secondServer.once("listening",resolve));
+  try {
+    const secondAddress=secondServer.address();assert(secondAddress&&typeof secondAddress!=="string");
+    const secondBase=`http://127.0.0.1:${secondAddress.port}/dashboard`;
+    assert.equal((await fetch(`${secondBase}/api/appointments?date=bad`,{headers:{Cookie:hostedCookie}})).status,400,"signed session survives a separate function instance");
+    assert.equal((await fetch(`${secondBase}/api/appointments?date=bad`,{headers:{Cookie:hostedCookie+"tampered"}})).status,401);
+  } finally { secondServer.close(); }
   for (const date of ["2026-02-30", "2026-13-01", "2026-11-24T00:00:00Z", "bad"]) {
     assert.equal((await fetch(`${base}/api/appointments?date=${date}`, {headers})).status, 400);
   }

@@ -15,20 +15,20 @@
       <nav id="navigation">
         <button data-view="calendar" class="nav-item active"><span data-icon="calendar"></span>Calendar</button>
         <button data-view="appointments" class="nav-item"><span data-icon="list"></span>Appointments</button>
-        <button data-view="inbox" class="nav-item"><span data-icon="message"></span>Inbox<span class="nav-count">1</span></button>
+        <button data-view="inbox" class="nav-item"><span data-icon="message"></span>Inbox<span class="nav-count" hidden>1</span></button>
         <button data-view="practitioners" class="nav-item"><span data-icon="users"></span>Practitioners</button>
       </nav>
       <div class="sidebar-bottom"><div class="pilot-note"><span data-icon="spark"></span><strong>Your practice, connected.</strong><p>From the first message to the next appointment.</p></div><div class="profile"><span class="avatar">MT</span><span>Meridian team<small>Practice workspace</small></span></div></div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumb">Calendar</strong></span><div class="topbar-right"><span class="mode-pill" id="mode-label"><i></i>Demo workspace</span><button class="button quiet small" id="connect-button"><span data-icon="link"></span>Connect pilot</button><span class="avatar small-avatar">MT</span></div></header>
-      <div id="connection-panel" class="connection-panel" hidden><form id="connect-form"><div><strong>Connect the Meridian pilot</strong><p>Read-only booking access. Enter the dashboard access token configured on this server.</p></div><label>Dashboard access token<input id="access-token" type="password" autocomplete="off" required minlength="32"></label><button class="button primary" type="submit">Connect</button><button class="button" type="button" id="close-connect">Close</button><p id="connection-error" role="alert"></p></form></div>
-      <div class="demo-banner"><span><span data-icon="flask"></span><strong id="banner-title">A little preview of a calmer practice.</strong> <span id="banner-copy">Fictional patients. Real possibilities.</span></span><button id="reset-demo" class="text-button">Reset demo <span aria-hidden="true">↺</span></button></div>
+      <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumb">Calendar</strong></span><div class="topbar-right"><span class="mode-pill" id="mode-label"><i></i>Practice workspace</span><button class="button quiet small" id="connect-button"><span data-icon="link"></span>Sign in</button><span class="avatar small-avatar">MT</span></div></header>
+      <div id="connection-panel" class="connection-panel" hidden><form id="connect-form"><div><strong>Sign in to Meridian</strong><p>Your practice access key opens the protected WhatsApp appointment book.</p></div><label>Practice access key<input id="access-token" type="password" autocomplete="off" required minlength="32"></label><button class="button primary" type="submit">Sign in</button><button class="button" type="button" id="close-connect">Close</button><p id="connection-error" role="alert"></p></form></div>
+      <div class="demo-banner"><span><span data-icon="calendar"></span><strong id="banner-title">Meridian appointments</strong> <span id="banner-copy">Your WhatsApp booking workspace.</span></span><button id="reset-demo" class="text-button" hidden>Reset demo <span aria-hidden="true">↺</span></button></div>
       <main id="main" tabindex="-1">
-        <div class="page-heading"><div><div class="eyebrow" id="eyebrow">YOUR PRACTICE AT A GLANCE</div><h1 id="page-title">The day, taken care of.</h1><p id="page-description">Every appointment in view. Everyone on the same page.</p></div><button class="button primary" id="demo-button"><span data-icon="play"></span>Try the WhatsApp demo</button><button class="button" id="refresh-pilot" hidden><span data-icon="refresh"></span>Refresh bookings</button></div>
+        <div class="page-heading"><div><div class="eyebrow" id="eyebrow">YOUR PRACTICE AT A GLANCE</div><h1 id="page-title">The day, taken care of.</h1><p id="page-description">Every appointment in view. Everyone on the same page.</p></div><button class="button primary" id="demo-button" hidden><span data-icon="play"></span>Try the WhatsApp demo</button><button class="button" id="refresh-pilot" hidden><span data-icon="refresh"></span>Refresh bookings</button></div>
         <div id="content"></div>
       </main>
-      <footer><span><span class="footer-dot"></span><span id="footer-status">Demo data · Changes stay in this tab</span></span><span>Built by Catalyst 7 <span class="footer-slash">/</span> Africa/Johannesburg · SAST</span></footer>
+      <footer><span><span class="footer-dot"></span><span id="footer-status">Protected practice workspace</span></span><span>Built by Catalyst 7 <span class="footer-slash">/</span> Africa/Johannesburg · SAST</span></footer>
     </div>
   </div>
   <div id="drawer-backdrop" class="drawer-backdrop" hidden></div><aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden></aside>
