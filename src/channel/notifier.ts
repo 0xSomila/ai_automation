@@ -1,4 +1,4 @@
-import { sendTemplate } from "./whatsapp";
+import { sendTemplate } from "./whatsapp.js";
 
 // Outbound notifications for the scheduled jobs (reminders, follow-up, etc.).
 // Reminders usually fall outside WhatsApp's 24-hour service window, so production

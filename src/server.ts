@@ -1,29 +1,29 @@
 import "dotenv/config";
 import express from "express";
 import { waitUntil } from "@vercel/functions";
-import { dashboardRouter } from "./dashboard";
+import { dashboardRouter } from "./dashboard.js";
 import { fileURLToPath } from "node:url";
-import { handleMessage, type Deps } from "./handler";
-import { MemoryStore } from "./db/memory";
-import { MemoryBackend } from "./booking/memory";
-import { parseInbound, sendText, verifySignature } from "./channel/whatsapp";
-import { getConfig, resolveBusiness } from "./config/store";
-import { dispatchPractitionerNotices, runPractitionerUpdates } from "./practitioner";
-import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier";
-import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron";
+import { handleMessage, type Deps } from "./handler.js";
+import { MemoryStore } from "./db/memory.js";
+import { MemoryBackend } from "./booking/memory.js";
+import { parseInbound, sendText, verifySignature } from "./channel/whatsapp.js";
+import { getConfig, resolveBusiness } from "./config/store.js";
+import { dispatchPractitionerNotices, runPractitionerUpdates } from "./practitioner.js";
+import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier.js";
+import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron.js";
 
 // Choose real implementations when their env is set, else dev stubs.
 async function buildDeps(): Promise<Deps> {
   let store;
   if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
-    const { SupabaseStore } = await import("./db/supabase");
+    const { SupabaseStore } = await import("./db/supabase.js");
     store = new SupabaseStore();
   } else {
     store = new MemoryStore();
   }
   let backend;
   if (process.env.GOOGLE_CALENDAR_ID || process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    const { GoogleCalendarBackend } = await import("./booking/googleCalendar");
+    const { GoogleCalendarBackend } = await import("./booking/googleCalendar.js");
     backend = new GoogleCalendarBackend();
   } else {
     backend = new MemoryBackend();

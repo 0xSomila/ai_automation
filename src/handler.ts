@@ -1,9 +1,9 @@
-import { getConfig } from "./config/store";
-import { loadPack } from "./brain/pack";
-import { runBrain, type BrainHooks } from "./brain/claude";
-import type { Store } from "./db/types";
-import type { BookingBackend } from "./booking/adapter";
-import type { Notifier } from "./channel/notifier";
+import { getConfig } from "./config/store.js";
+import { loadPack } from "./brain/pack.js";
+import { runBrain, type BrainHooks } from "./brain/claude.js";
+import type { Store } from "./db/types.js";
+import type { BookingBackend } from "./booking/adapter.js";
+import type { Notifier } from "./channel/notifier.js";
 
 export interface Deps {
   store: Store;

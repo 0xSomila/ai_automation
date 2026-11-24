@@ -1,13 +1,13 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { createSupabaseServerClient } from "../src/db/client";
-import { SupabaseStore } from "../src/db/supabase";
-import { GoogleCalendarBackend } from "../src/booking/googleCalendar";
-import { getConfig } from "../src/config/store";
-import { loadPack } from "../src/brain/pack";
-import { executeTool } from "../src/brain/tools";
-import { dispatchPractitionerNotices } from "../src/practitioner";
+import { createSupabaseServerClient } from "../src/db/client.js";
+import { SupabaseStore } from "../src/db/supabase.js";
+import { GoogleCalendarBackend } from "../src/booking/googleCalendar.js";
+import { getConfig } from "../src/config/store.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool } from "../src/brain/tools.js";
+import { dispatchPractitionerNotices } from "../src/practitioner.js";
 
 async function main(): Promise<void> {
   assert.ok(process.env.GOOGLE_CALENDAR_ID && process.env.GOOGLE_CALENDAR_ID === process.env.MERIDIAN_RETENTION_CALENDAR_ID);

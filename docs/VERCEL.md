@@ -2,6 +2,8 @@
 
 The repository deploys the Express app in `src/server.ts`. Vercel serves `public/` assets and includes the client and vertical pack files. `/` redirects to `/dashboard/`; the privacy notice remains at `/privacy/meridian-booking-pilot`.
 
+The Vercel project is `catalyst-7/c7-automation-os`, with production at https://c7-automation-os.vercel.app. It tracks `codex/meridian-booking-pilot`; draft PR #2 contains the release. Source uses explicit `.js` relative imports with TypeScript NodeNext resolution so emitted code also works in Vercel's native ESM runtime. The model client is created only for a conversation, allowing health/privacy/demo routes to start without live model credentials.
+
 ## Runtime and secrets
 
 Use Node 22 and the repository root. `vercel.json` sets the Express framework, runs TypeScript validation and allows the function up to 300 seconds. Signed WhatsApp webhooks are acknowledged immediately and their processing promise is registered with Vercel's `waitUntil` helper. This preserves the existing model/tool/database/Calendar/send flow after the response. This is bounded background execution, not a durable job queue.

@@ -2,11 +2,11 @@ import "dotenv/config";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { MemoryStore } from "../src/db/memory";
-import type { Engagement } from "../src/db/types";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { handleMessage } from "../src/handler";
+import { MemoryStore } from "../src/db/memory.js";
+import type { Engagement } from "../src/db/types.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { handleMessage } from "../src/handler.js";
 
 // Runs the scripted conversations in test/conversations/*.json against the
 // handler with fresh in-memory adapters per case. Asserts, per turn, that the

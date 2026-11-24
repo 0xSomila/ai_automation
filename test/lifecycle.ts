@@ -1,12 +1,12 @@
 import "dotenv/config";
 import assert from "node:assert";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { loadConfig } from "../src/config/load";
-import { loadPack } from "../src/brain/pack";
-import { executeTool, type ToolCtx } from "../src/brain/tools";
-import { runFollowup, runReactivation, runWaitlist } from "../src/cron";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { loadConfig } from "../src/config/load.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool, type ToolCtx } from "../src/brain/tools.js";
+import { runFollowup, runReactivation, runWaitlist } from "../src/cron.js";
 
 // Phase 5 gate: the booking lifecycle tools (reschedule, cancel, join_waitlist)
 // and the follow-up, reactivation and waitlist jobs, driven directly against the

@@ -1,10 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { Config } from "../config/types";
-import type { BookingBackend } from "../booking/adapter";
-import type { Engagement, Store } from "../db/types";
-import type { Pack } from "./pack";
-import { computeOpenSlots, computeCoversSlots } from "../booking/availability";
-import { practiceTime } from "../booking/time";
+import type { Config } from "../config/types.js";
+import type { BookingBackend } from "../booking/adapter.js";
+import type { Engagement, Store } from "../db/types.js";
+import type { Pack } from "./pack.js";
+import { computeOpenSlots, computeCoversSlots } from "../booking/availability.js";
+import { practiceTime } from "../booking/time.js";
 
 export interface ToolCtx {
   config: Config;

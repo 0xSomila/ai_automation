@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "./client";
+import { createSupabaseServerClient } from "./client.js";
 import type {
   CronRun,
   CronRunResult,
@@ -13,7 +13,7 @@ import type {
   ReservationLoad,
   Store,
   PractitionerNotice,
-} from "./types";
+} from "./types.js";
 
 const BOOKING_COLUMNS = "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id, payload";
 

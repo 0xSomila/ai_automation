@@ -2,9 +2,9 @@ import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "../db/client";
-import type { Config } from "./types";
-import { loadConfig, resolveBusinessByPhoneNumberId as resolveFromFiles } from "./load";
+import { createSupabaseServerClient } from "../db/client.js";
+import type { Config } from "./types.js";
+import { loadConfig, resolveBusinessByPhoneNumberId as resolveFromFiles } from "./load.js";
 
 // Config source of truth. When Supabase is configured, client configs live in the
 // `businesses` table (onboarding is a row, no redeploy); otherwise they are the

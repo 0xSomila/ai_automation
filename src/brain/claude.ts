@@ -1,16 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Config } from "../config/types";
-import type { BookingBackend } from "../booking/adapter";
-import { practiceTime } from "../booking/time";
-import type { Message, Store } from "../db/types";
-import type { Pack } from "./pack";
-import { buildSystemPrompt } from "./systemPrompt";
-import { executeTool, toolDefs, type ToolCtx } from "./tools";
+import type { Config } from "../config/types.js";
+import type { BookingBackend } from "../booking/adapter.js";
+import { practiceTime } from "../booking/time.js";
+import type { Message, Store } from "../db/types.js";
+import type { Pack } from "./pack.js";
+import { buildSystemPrompt } from "./systemPrompt.js";
+import { executeTool, toolDefs, type ToolCtx } from "./tools.js";
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-haiku-4-5";
 const MAX_ROUNDS = Number(process.env.MAX_TOOL_ROUNDS || 4);
 
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY
+let client: Anthropic | undefined;
+function modelClient(): Anthropic {
+  return client ??= new Anthropic(); // only booking conversations need the API key
+}
 
 // Optional observation hooks. Production passes none; the test runner passes
 // onToolUse to assert which tools fired on a turn.
@@ -205,7 +208,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
   let retriedBookingConfirmation = false;
   bookingTurn: for (let round = 0; round <= MAX_ROUNDS; round++) {
     rounds = round + 1;
-    const resp = await client.messages.create({
+    const resp = await modelClient().messages.create({
       model: MODEL,
       max_tokens: 1024,
       system,

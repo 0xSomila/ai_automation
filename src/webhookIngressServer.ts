@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { createWebhookIngress } from "./webhookIngress";
+import { createWebhookIngress } from "./webhookIngress.js";
 
 const upstreamPort = Number(process.env.WEBHOOK_CORE_PORT || process.env.PORT || 3000);
 const port = Number(process.env.WEBHOOK_INGRESS_PORT || 3101);

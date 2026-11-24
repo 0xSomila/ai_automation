@@ -1,8 +1,8 @@
 import "dotenv/config";
-import { SupabaseStore } from "./db/supabase";
-import { GoogleCalendarBackend } from "./booking/googleCalendar";
-import { WhatsAppNotifier } from "./channel/notifier";
-import { runPractitionerUpdates } from "./practitioner";
+import { SupabaseStore } from "./db/supabase.js";
+import { GoogleCalendarBackend } from "./booking/googleCalendar.js";
+import { WhatsAppNotifier } from "./channel/notifier.js";
+import { runPractitionerUpdates } from "./practitioner.js";
 
 // A local scheduled-task entry point for the pilot. Hosted n8n calls /cron/practitioner.
 async function main(): Promise<void> {

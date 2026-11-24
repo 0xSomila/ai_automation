@@ -1,11 +1,11 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { GoogleCalendarBackend } from "../src/booking/googleCalendar";
-import { loadPack } from "../src/brain/pack";
-import { executeTool } from "../src/brain/tools";
-import { getConfig } from "../src/config/store";
-import { SupabaseStore } from "../src/db/supabase";
+import { GoogleCalendarBackend } from "../src/booking/googleCalendar.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool } from "../src/brain/tools.js";
+import { getConfig } from "../src/config/store.js";
+import { SupabaseStore } from "../src/db/supabase.js";
 
 // Run against a test calendar and database. Cancellation leaves a test record in Supabase.
 async function main(): Promise<void> {

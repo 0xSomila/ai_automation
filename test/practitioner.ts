@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { loadConfig } from "../src/config/load";
-import { enqueueDailySchedule, dispatchPractitionerNotices, practitionerMessage } from "../src/practitioner";
-import { executeTool, type ToolCtx } from "../src/brain/tools";
-import { loadPack } from "../src/brain/pack";
-import { practiceDay, practiceTime } from "../src/booking/time";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { loadConfig } from "../src/config/load.js";
+import { enqueueDailySchedule, dispatchPractitionerNotices, practitionerMessage } from "../src/practitioner.js";
+import { executeTool, type ToolCtx } from "../src/brain/tools.js";
+import { loadPack } from "../src/brain/pack.js";
+import { practiceDay, practiceTime } from "../src/booking/time.js";
 
 async function main(): Promise<void> {
   const phone = "+27820000001";

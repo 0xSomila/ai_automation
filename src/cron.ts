@@ -1,13 +1,13 @@
-import type { Deps } from "./handler";
-import { getConfig } from "./config/store";
-import { loadPack } from "./brain/pack";
-import { computeOpenSlots } from "./booking/availability";
+import type { Deps } from "./handler.js";
+import { getConfig } from "./config/store.js";
+import { loadPack } from "./brain/pack.js";
+import { computeOpenSlots } from "./booking/availability.js";
 import {
   loadTemplate,
   renderTemplate,
   reminderTemplateName,
   followupTemplateName,
-} from "./templates";
+} from "./templates.js";
 
 // Scheduled job handlers, invoked by the n8n schedule workflows through the
 // /cron/* routes on the server. n8n stays pure triggers-and-transport; the

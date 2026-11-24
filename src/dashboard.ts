@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { createSupabaseServerClient } from "./db/client";
+import { createSupabaseServerClient } from "./db/client.js";
 
 // This pilot endpoint is read-only and locked to one server-selected business.
 // It intentionally exposes no phone numbers, message histories or service keys.

@@ -1,10 +1,10 @@
 import "dotenv/config";
 import assert from "node:assert";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { loadConfig } from "../src/config/load";
-import { loadPack } from "../src/brain/pack";
-import { executeTool, type ToolCtx } from "../src/brain/tools";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { loadConfig } from "../src/config/load.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool, type ToolCtx } from "../src/brain/tools.js";
 
 // Phase 6 gate: the restaurant covers resource model. Availability is capacity
 // minus reserved covers at a slot; the party-size limit routes large groups to an

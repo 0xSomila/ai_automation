@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { setTimeout } from "node:timers/promises";
-import { MemoryBackend } from "../src/booking/memory";
-import { WhatsAppNotifier, type Notifier } from "../src/channel/notifier";
-import { runFollowup, runReminders, type CronResult } from "../src/cron";
-import { MemoryStore } from "../src/db/memory";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { WhatsAppNotifier, type Notifier } from "../src/channel/notifier.js";
+import { runFollowup, runReminders, type CronResult } from "../src/cron.js";
+import { MemoryStore } from "../src/db/memory.js";
 
 // An accelerated run of the real due-message jobs for one fictional appointment.
 // Use --whatsapp only with the Meridian test sender and an approved test recipient.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
-import { createWebhookIngress } from "../src/webhookIngress";
+import { createWebhookIngress } from "../src/webhookIngress.js";
 
 async function listen(server: Server): Promise<number> {
   server.listen(0, "127.0.0.1");

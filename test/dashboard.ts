@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import express from "express";
 import { randomBytes } from "node:crypto";
-import { dashboardRouter } from "../src/dashboard";
+import { dashboardRouter } from "../src/dashboard.js";
 
 // Run without dotenv: these checks must never use the pilot database.
 const saved = { token: process.env.DASHBOARD_ACCESS_TOKEN, url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_KEY, local: process.env.DASHBOARD_LOCAL_ACCESS };

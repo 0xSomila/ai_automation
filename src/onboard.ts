@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { readFileSync } from "node:fs";
-import { getConfig, listConfigs, upsertConfig, validateConfig } from "./config/store";
+import { getConfig, listConfigs, upsertConfig, validateConfig } from "./config/store.js";
 
 // Onboard or update a client from a config file, or list clients. The config
 // store writes to the businesses table when Supabase is configured (no redeploy),

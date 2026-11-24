@@ -1,5 +1,5 @@
-import type { BookingBackend, BusyBlock } from "./adapter";
-import { practiceDay } from "./time";
+import type { BookingBackend, BusyBlock } from "./adapter.js";
+import { practiceDay } from "./time.js";
 
 // In-memory calendar for dev and the chat harness. Starts fully open;
 // each booking adds a busy block so repeat calls see the slot taken.

@@ -1,10 +1,10 @@
-import type { Config } from "./config/types";
-import { getConfig, listConfigs } from "./config/store";
-import type { Deps } from "./handler";
-import type { Notification } from "./channel/notifier";
-import type { PractitionerNotice } from "./db/types";
-import type { CronResult } from "./cron";
-import { practiceDay } from "./booking/time";
+import type { Config } from "./config/types.js";
+import { getConfig, listConfigs } from "./config/store.js";
+import type { Deps } from "./handler.js";
+import type { Notification } from "./channel/notifier.js";
+import type { PractitionerNotice } from "./db/types.js";
+import type { CronResult } from "./cron.js";
+import { practiceDay } from "./booking/time.js";
 
 function text(value: unknown, fallback = ""): string {
   return String(value ?? fallback).replace(/\s+/g, " ").trim();

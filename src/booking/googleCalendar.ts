@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { google } from "googleapis";
-import type { BookingBackend, BusyBlock } from "./adapter";
-import { practiceDay } from "./time";
+import type { BookingBackend, BusyBlock } from "./adapter.js";
+import { practiceDay } from "./time.js";
 
 export interface GoogleCalendarOptions {
   calendarId?: string;

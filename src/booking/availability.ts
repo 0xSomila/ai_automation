@@ -1,7 +1,7 @@
-import type { Config, DayKey } from "../config/types";
-import type { BusyBlock } from "./adapter";
-import type { ReservationLoad } from "../db/types";
-import { practiceTime } from "./time";
+import type { Config, DayKey } from "../config/types.js";
+import type { BusyBlock } from "./adapter.js";
+import type { ReservationLoad } from "../db/types.js";
+import { practiceTime } from "./time.js";
 
 const DAY_KEYS: DayKey[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 

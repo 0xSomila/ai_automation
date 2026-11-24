@@ -1,5 +1,5 @@
-import type { Config } from "../config/types";
-import type { Pack } from "./pack";
+import type { Config } from "../config/types.js";
+import type { Pack } from "./pack.js";
 
 const DAY_LABEL: Record<string, string> = {
   mon: "Monday",

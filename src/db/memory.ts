@@ -12,7 +12,7 @@ import type {
   ReservationLoad,
   Store,
   PractitionerNotice,
-} from "./types";
+} from "./types.js";
 
 // In-memory store for dev and the chat harness.
 export class MemoryStore implements Store {

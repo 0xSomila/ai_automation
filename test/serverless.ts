@@ -4,13 +4,15 @@ import { createHmac } from "node:crypto";
 // Do not invoke a real conversation or provider. Empty verified Meta events
 // exercise acknowledgement and Vercel's continuation registration without sends.
 process.env.VERCEL = "1";
+process.env.DOTENV_CONFIG_PATH = "node_modules/.c7-no-env-fixture";
+delete process.env.ANTHROPIC_API_KEY;
 process.env.WHATSAPP_APP_SECRET = "serverless-fixture-secret";
 process.env.WHATSAPP_VERIFY_TOKEN = "serverless-fixture-verify";
 process.env.DASHBOARD_LOCAL_ACCESS = "true";
 const tasks: Promise<unknown>[] = [];
 const key = Symbol.for("@vercel/request-context");
 Object.defineProperty(globalThis, key, { configurable:true, value:{get:()=>({waitUntil:(task:Promise<unknown>)=>tasks.push(task)})} });
-const { default: app } = await import("../src/server");
+const { default: app } = await import("../src/server.js");
 const server=app.listen(0,"127.0.0.1");
 await new Promise<void>(resolve=>server.once("listening",resolve));
 const address=server.address();assert(address&&typeof address!=="string");
