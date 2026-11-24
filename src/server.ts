@@ -1,11 +1,14 @@
 import "dotenv/config";
 import express from "express";
+import { waitUntil } from "@vercel/functions";
+import { dashboardRouter } from "./dashboard";
 import { fileURLToPath } from "node:url";
 import { handleMessage, type Deps } from "./handler";
 import { MemoryStore } from "./db/memory";
 import { MemoryBackend } from "./booking/memory";
 import { parseInbound, sendText, verifySignature } from "./channel/whatsapp";
-import { resolveBusiness } from "./config/store";
+import { getConfig, resolveBusiness } from "./config/store";
+import { dispatchPractitionerNotices, runPractitionerUpdates } from "./practitioner";
 import { MemoryNotifier, WhatsAppNotifier } from "./channel/notifier";
 import { runReminders, runFollowup, runReactivation, runWaitlist, type CronResult } from "./cron";
 
@@ -35,8 +38,10 @@ async function buildDeps(): Promise<Deps> {
 const DEFAULT_SLUG = process.env.DEFAULT_CLIENT_SLUG || "meridian";
 
 const app = express();
+app.get("/", (_req, res) => res.redirect("/dashboard/"));
 // Capture the exact raw body so the Meta HMAC signature can be verified over it.
 app.use(express.json({ verify: (req, _res, buf) => ((req as any).rawBody = buf) }));
+app.use("/dashboard", dashboardRouter());
 
 app.get("/privacy/meridian-booking-pilot", (_req, res) => {
   res.sendFile(fileURLToPath(new URL("../public/privacy/meridian-booking-pilot.html", import.meta.url)));
@@ -58,16 +63,9 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-app.post("/webhook", async (req, res) => {
-  // Keep the endpoint closed until the Meta app secret is configured.
-  if (!process.env.WHATSAPP_APP_SECRET ||
-      !verifySignature((req as any).rawBody ?? "", req.header("x-hub-signature-256"))) {
-    return res.sendStatus(401);
-  }
-  res.sendStatus(200); // ack fast; Meta retries on non-200
-
+async function processInbound(body: unknown): Promise<void> {
   try {
-    const inbound = parseInbound(req.body);
+    const inbound = parseInbound(body);
     if (!inbound) return;
     // Replies use the configured sender. Ignore events for other Meta numbers.
     const senderNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -87,10 +85,27 @@ app.post("/webhook", async (req, res) => {
       from: inbound.from,
       text: inbound.text,
     });
-    await sendText(inbound.from, reply);
+    try {
+      await sendText(inbound.from, reply);
+    } finally {
+      await dispatchPractitionerNotices(deps, await getConfig(slug), 3);
+    }
   } catch (e) {
     console.error("inbound error:", (e as Error).message);
   }
+}
+
+app.post("/webhook", (req, res) => {
+  if (!process.env.WHATSAPP_APP_SECRET ||
+      !verifySignature((req as any).rawBody ?? "", req.header("x-hub-signature-256"))) {
+    return res.sendStatus(401);
+  }
+  // Vercel must retain the invocation after Meta's immediate acknowledgement.
+  // Signature verification and the stored dedupe remain inside the same flow.
+  const task = processInbound(req.body);
+  if (process.env.VERCEL) waitUntil(task);
+  else void task;
+  return res.sendStatus(200);
 });
 
 // Scheduled jobs, triggered by the n8n schedule workflows. Guarded by a shared
@@ -100,6 +115,7 @@ const cronJobs: Record<string, (deps: Deps) => Promise<CronResult>> = {
   followup: runFollowup,
   reactivation: runReactivation,
   waitlist: runWaitlist,
+  practitioner: runPractitionerUpdates,
 };
 
 app.post("/cron/:job", async (req, res) => {
@@ -137,4 +153,5 @@ app.get("/ops/summary", async (req, res) => {
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => console.log(`Automation OS webhook on :${port}`));
+if (!process.env.VERCEL) app.listen(port, () => console.log(`Automation OS webhook on :${port}`));
+export default app;

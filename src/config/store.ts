@@ -37,6 +37,12 @@ export function validateConfig(raw: unknown): Config {
   if (!Array.isArray(c.services)) errs.push("services must be an array");
   if (!c.booking || typeof c.booking.slotStepMin !== "number") errs.push("booking.slotStepMin is required");
   if (!c.channels?.whatsappNumberId) errs.push("channels.whatsappNumberId is required");
+  if (c.practitionerNotifications) {
+    const notifications = c.practitionerNotifications;
+    if (!/^\+[1-9]\d{7,14}$/.test(notifications.whatsappPhone)) errs.push("practitionerNotifications.whatsappPhone must use international format");
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(notifications.dailyTime)) errs.push("practitionerNotifications.dailyTime must be HH:MM");
+    if (!Number.isFinite(notifications.lastMinuteHours) || notifications.lastMinuteHours < 0) errs.push("practitionerNotifications.lastMinuteHours must be non-negative");
+  }
   if (errs.length) throw new Error(`Invalid config:\n  - ${errs.join("\n  - ")}`);
   return raw as Config;
 }

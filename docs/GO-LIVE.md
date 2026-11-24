@@ -107,3 +107,7 @@ follow-up. It leaves Supabase and Google Calendar booking records untouched.
 
 - Deactivate the Meta webhook subscription (stops inbound) and unpublish the n8n reminders
   workflow (stops outbound). The Core can keep running; no customer traffic reaches it.
+
+## Practitioner notifications
+
+Daily schedules and appointment change alerts are described in [PRACTITIONER-UPDATES.md](PRACTITIONER-UPDATES.md). Apply its notification migration and approve its two dedicated templates before relying on delivery. The local pilot worker is `npm run practitioner:run`, and hosted orchestration calls `/cron/practitioner` every minute.

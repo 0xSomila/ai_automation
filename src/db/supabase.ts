@@ -12,9 +12,10 @@ import type {
   Message,
   ReservationLoad,
   Store,
+  PractitionerNotice,
 } from "./types";
 
-const BOOKING_COLUMNS = "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id";
+const BOOKING_COLUMNS = "id, business_id, customer_id, kind, service, starts_at, duration_min, status, reference, backend_event_id, payload";
 
 function rowToEngagement(row: any): Engagement {
   return {
@@ -23,6 +24,7 @@ function rowToEngagement(row: any): Engagement {
     customerId: row.customer_id,
     kind: row.kind,
     service: row.service ?? undefined,
+    bookingName: row.payload?.bookingName ?? undefined,
     startsAt: row.starts_at ?? undefined,
     durationMin: row.duration_min ?? undefined,
     status: row.status,
@@ -49,6 +51,36 @@ export class SupabaseStore implements Store {
 
   constructor() {
     this.db = createSupabaseServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+  }
+
+  async dailyAppointments(businessId: string, startISO: string, endISO: string): Promise<Engagement[]> {
+    const { data, error } = await this.db.from("engagements").select(BOOKING_COLUMNS)
+      .eq("business_id", businessId).eq("kind", "appointment").eq("status", "confirmed")
+      .gte("starts_at", startISO).lt("starts_at", endISO).order("starts_at").order("id");
+    if (error) throw error;
+    return (data ?? []).map(rowToEngagement);
+  }
+
+  async enqueuePractitionerDaily(businessId: string, recipient: string, date: string, expiresAt: string, parts: Record<string, unknown>[]): Promise<void> {
+    const { error } = await this.db.rpc("enqueue_practitioner_daily", {
+      business_slug: businessId, recipient_phone: recipient, local_date: date, expiry: expiresAt, parts,
+    });
+    if (error) throw error;
+  }
+
+  async claimPractitionerNotice(businessId: string): Promise<PractitionerNotice | null> {
+    const { data, error } = await this.db.rpc("claim_practitioner_notice", { business_slug: businessId });
+    if (error) throw error;
+    const row = data?.[0];
+    return row ? {
+      id: row.id, businessId: row.business_id, recipient: row.recipient, kind: row.kind,
+      payload: row.payload, createdAt: row.created_at, leaseToken: row.lease_token,
+    } : null;
+  }
+
+  async finishPractitionerNotice(id: string, leaseToken: string, sent: boolean): Promise<void> {
+    const { error } = await this.db.rpc("finish_practitioner_notice", { notice_id: id, claim_token: leaseToken, accepted: sent });
+    if (error) throw error;
   }
 
   async getOrCreateCustomer(businessId: string, waPhone: string): Promise<Customer> {
@@ -109,6 +141,7 @@ export class SupabaseStore implements Store {
         customer_id: e.customerId,
         kind: e.kind,
         service: e.service,
+        payload: e.bookingName ? { bookingName: e.bookingName } : {},
         resource: e.resource,
         party: e.party,
         starts_at: e.startsAt,

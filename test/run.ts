@@ -21,6 +21,7 @@ interface Turn {
   expectTool?: string;
   expectReply?: string[];
   expectBooking?: Pick<Engagement, "kind" | "service" | "party">;
+  expectBookingCount?: number;
 }
 interface Case {
   name: string;
@@ -73,6 +74,9 @@ async function runCase(c: Case): Promise<string[]> {
       failures.push(
         `${label}: expected tool "${turn.expectTool}", got [${toolsThisTurn.join(", ") || "none"}]`,
       );
+    }
+    if (turn.expectBookingCount !== undefined && store.created.length !== turn.expectBookingCount) {
+      failures.push(`${label}: expected ${turn.expectBookingCount} booking records, got ${store.created.length}`);
     }
     for (const s of turn.expectReply ?? []) {
       if (!reply.toLowerCase().includes(s.toLowerCase())) {
