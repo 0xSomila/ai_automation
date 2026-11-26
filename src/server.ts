@@ -64,12 +64,16 @@ app.get("/webhook", (req, res) => {
 });
 
 async function processInbound(body: unknown): Promise<void> {
+  const started = performance.now();
+  let failureRecipient: string | undefined;
+  let stage = "parse";
   try {
     const inbound = parseInbound(body);
     if (!inbound) return;
     // Replies use the configured sender. Ignore events for other Meta numbers.
     const senderNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     if (senderNumberId && inbound.phoneNumberId !== senderNumberId) return;
+    stage = "setup";
     const deps = await buildDeps();
 
     // Multi-tenant: route by the number the message arrived on, falling back to
@@ -80,18 +84,32 @@ async function processInbound(body: unknown): Promise<void> {
     const fresh = await deps.store.claimMessage(slug, inbound.messageId);
     if (!fresh) return;
 
+    failureRecipient = inbound.from;
+    stage = "answer";
     const reply = await handleMessage(deps, {
       businessSlug: slug,
       from: inbound.from,
       text: inbound.text,
     });
+    // A failed send must not trigger a second, potentially duplicate message.
+    failureRecipient = undefined;
+    stage = "send";
     try {
       await sendText(inbound.from, reply);
+      console.info(`[whatsapp] reply accepted elapsedMs=${Math.round(performance.now() - started)}`);
+      stage = "practitioner";
     } finally {
       await dispatchPractitionerNotices(deps, await getConfig(slug), 3);
     }
   } catch (e) {
-    console.error("inbound error:", (e as Error).message);
+    console.error(`inbound error: stage=${stage} elapsedMs=${Math.round(performance.now() - started)}`, (e as Error).message);
+    if (failureRecipient) {
+      try {
+        await sendText(failureRecipient, "I couldn't confirm that request. Please check your appointments before trying again, or contact the practice for help.");
+      } catch {
+        console.error("[whatsapp] could not deliver request failure notice");
+      }
+    }
   }
 }
 

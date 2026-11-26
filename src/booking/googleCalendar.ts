@@ -44,7 +44,9 @@ export class GoogleCalendarBackend implements BookingBackend {
     });
     this.calendar = google.calendar({ version: "v3", auth });
     this.calendarId = calendarId;
-    this.timeZone = opts.timeZone ?? process.env.TZ ?? "Africa/Johannesburg";
+    // Hosting runtimes can set TZ to POSIX values such as :UTC. Google needs
+    // an IANA calendar zone; the host's process clock must not choose it.
+    this.timeZone = opts.timeZone ?? process.env.GOOGLE_CALENDAR_TIMEZONE ?? "Africa/Johannesburg";
   }
 
   async getBusy(dateISO: string, timeZone = this.timeZone): Promise<BusyBlock[]> {
