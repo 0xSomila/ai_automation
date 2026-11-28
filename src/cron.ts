@@ -1,13 +1,13 @@
-import type { Deps } from "./handler";
-import { getConfig } from "./config/store";
-import { loadPack } from "./brain/pack";
-import { computeOpenSlots } from "./booking/availability";
+import type { Deps } from "./handler.js";
+import { getConfig } from "./config/store.js";
+import { loadPack } from "./brain/pack.js";
+import { computeOpenSlots } from "./booking/availability.js";
 import {
   loadTemplate,
   renderTemplate,
   reminderTemplateName,
   followupTemplateName,
-} from "./templates";
+} from "./templates.js";
 
 // Scheduled job handlers, invoked by the n8n schedule workflows through the
 // /cron/* routes on the server. n8n stays pure triggers-and-transport; the
@@ -42,9 +42,9 @@ function formatInZone(iso: string, tz: string): { date: string; time: string } {
 // Reminders (hourly): confirmed engagements inside the reminder window with
 // reminder_sent_at null. Render the pack's *_reminder template, send, then stamp.
 // The stamp is the idempotency guard, so a second run in the same window sends nothing.
-export async function runReminders(deps: Deps): Promise<CronResult> {
+export async function runReminders(deps: Deps, now = new Date()): Promise<CronResult> {
   const result: CronResult = { sent: 0, skipped: 0, failed: 0 };
-  const nowISO = new Date().toISOString();
+  const nowISO = now.toISOString();
 
   // Window = the max reminderHoursBefore across configs we might touch. We read
   // per-business config below; query generously at 48h then filter per business.
@@ -96,14 +96,19 @@ export async function runReminders(deps: Deps): Promise<CronResult> {
 
 // Follow-up (daily): past confirmed/completed engagements with no follow-up sent.
 // Render the pack's *_followup template, send, stamp followup_sent_at.
-export async function runFollowup(deps: Deps): Promise<CronResult> {
+export async function runFollowup(deps: Deps, now = new Date()): Promise<CronResult> {
   const result: CronResult = { sent: 0, skipped: 0, failed: 0 };
-  const nowISO = new Date().toISOString();
+  const nowISO = now.toISOString();
   const due = await deps.store.dueFollowups(nowISO);
 
   for (const d of due) {
     try {
       const config = await getConfig(d.businessId);
+      const durationMin = d.durationMin ?? config.booking.slotStepMin;
+      if (Date.parse(d.startsAt) + durationMin * 60_000 > now.getTime()) {
+        result.skipped++;
+        continue;
+      }
       const pack = loadPack(config.vertical);
       const templateName = followupTemplateName(pack.templates);
       if (!templateName) {

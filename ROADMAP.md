@@ -9,17 +9,53 @@ Read `CLAUDE.md` for the rules, `BUILD.md` for the spec, `n8n/ARCHITECTURE.md` f
 
 ---
 
-## Where we are now (done)
+## C7 build log, 24 November 2026
 
-- `src/` Core with dependency injection: `Store` and `BookingBackend` interfaces, each with a
-  memory impl (dev) and a production impl (Supabase, Google Calendar) auto-selected by env.
-- Local dev loop: `npm run chat` runs the real tool loop against in-memory adapters.
-- `book_appointment` fully works (re-validates the slot, writes, persists, returns a reference).
-- Inbound hardening: Meta HMAC signature verification + dedupe (`processed_messages`).
-- `/webhook` (inbound) and secret-guarded `/cron/*` routes exist; four vertical packs.
-- n8n inbound workflow built (optional); cron handlers are stubs.
+The Meridian fictional practice pilot has passed live WhatsApp booking, rescheduling, cancellation,
+and Calendar slot-reopening checks against Supabase and Google Calendar. References stay with an
+appointment across changes. A later context correction was verified by moving the existing
+appointment using its original and requested times. Permanent hosting is pending.
 
-So the brain books, locally. Nothing is hosted; no real DB, calendar, or WhatsApp.
+The practitioner extension adds a 07:00 SAST daily schedule and change alerts, with changes within
+24 hours flagged as last-minute. Its database trigger and stored retry queue passed a fictional
+booking, move, and cancellation integration test. That test captured messages in a test notifier.
+Meta accepted daily schedule messages on 22 November at 21:48 SAST and 23 November at 08:50 SAST.
+The acceptance stamps establish provider acceptance. Recipient receipt and the live change-alert
+flow need a separate phone check.
+
+All four English utility templates were verified as approved on 24 November. Patient reminders
+and follow-ups have software tests, but no recorded scheduled runs were found for either job.
+The Meta number remains connected. An initial check found the old temporary webhook hostname
+unreachable. The dashboard connection work later restored the Core on port 3100, added a
+webhook-only ingress on port 3101, and verified Meta's replacement callback. The dashboard now
+reads the same Meridian appointment records through a protected local browser session and
+refreshes every 30 seconds. Existing records and references were verified in the browser.
+A fresh user-sent WhatsApp booking, C7-DHG5 for Avery Testwell on 25 November at 10:00 SAST,
+was verified in Supabase, its linked Google Calendar event and the dashboard, with the same
+reference and 45-minute duration. The booking remains confirmed. Demo data remains separate.
+Practitioner notification
+scheduling is installed, but its latest recorded database run was on 23 November and its current
+Windows task result requires diagnosis. The daily schedule depends on computer availability.
+
+The branch is one local commit ahead of its tracked remote at `92eb847`. The context correction,
+practitioner extension, and associated documentation remain uncommitted.
+
+Continue in this order.
+
+1. Verify a WhatsApp move and cancellation also refresh the connected dashboard, keeping the reference.
+2. Check the Windows task failure and verify an accepted daily schedule and actual phone receipt.
+3. Run a fictional booking, move, and cancellation while checking practitioner alert receipt,
+   last-minute labels, the preserved reference, and the corresponding Calendar changes.
+4. Verify the approved patient reminder and follow-up on the phone and activate their schedules.
+5. Review and commit the remaining changes, then move the Core and jobs to stable hosting.
+
+The next public C7 Build Log episode can show the practitioner side of the same appointment.
+Start with the daily schedule, make a patient change in WhatsApp, show the practitioner's update,
+and confirm the Calendar event moved. Capture the live alerts before presenting that sequence
+as verified. Booking, rescheduling, and cancellation footage already has live pilot evidence.
+
+See [practitioner setup](docs/PRACTITIONER-UPDATES.md) and the
+[Meridian technical specification](docs/MERIDIAN-DEMO-SPEC.md) for implementation details.
 
 ---
 

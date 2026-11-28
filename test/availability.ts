@@ -1,11 +1,11 @@
 import "dotenv/config";
 import assert from "node:assert";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { loadConfig } from "../src/config/load";
-import { loadPack } from "../src/brain/pack";
-import { computeOpenSlots, dayStatus } from "../src/booking/availability";
-import { executeTool, type ToolCtx } from "../src/brain/tools";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { loadConfig } from "../src/config/load.js";
+import { loadPack } from "../src/brain/pack.js";
+import { computeOpenSlots, dayStatus } from "../src/booking/availability.js";
+import { executeTool, type ToolCtx } from "../src/brain/tools.js";
 
 // Regression: an empty day must say why, never just "fully booked", and a slot
 // must fit the whole service. Pure functions use a pinned clock; no Claude API.
@@ -61,6 +61,13 @@ async function main(): Promise<void> {
   assert.ok(Array.isArray(res.nextAvailable) && res.nextAvailable.length > 0, "offers real next days");
   for (const day of res.nextAvailable) assert.ok(day.open.length > 0 && day.date > sunday);
   assert.ok(!/fully booked/i.test(res.note), "a closed day is not described as booked");
+
+  // 8. Moving a booking must not collide with its own calendar block (10:00 to 09:30, 45 min).
+  const mdate = (() => { const d = new Date(Date.now() + 3 * 864e5); while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+  const booked = JSON.parse(await executeTool("book_appointment", { name: "Avery Testwell", service: "Initial consultation", date: mdate, time: "10:00" }, ctx));
+  assert.strictEqual(booked.status, "confirmed");
+  const moved = JSON.parse(await executeTool("reschedule_appointment", { reference: booked.reference, date: mdate, time: "09:30" }, ctx));
+  assert.strictEqual(moved.status, "confirmed", "09:30 + 45 min overlaps only the booking's own 10:00 block");
 
   console.log("availability: all checks passed");
 }

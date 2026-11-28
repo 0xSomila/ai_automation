@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { GoogleCalendarBackend } from "./booking/googleCalendar";
-import { createSupabaseServerClient } from "./db/client";
+import { GoogleCalendarBackend } from "./booking/googleCalendar.js";
+import { createSupabaseServerClient } from "./db/client.js";
 
 async function main(): Promise<void> {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY, GOOGLE_CALENDAR_ID, MERIDIAN_RETENTION_CALENDAR_ID } = process.env;

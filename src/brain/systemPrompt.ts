@@ -1,5 +1,5 @@
-import type { Config } from "../config/types";
-import type { Pack } from "./pack";
+import type { Config } from "../config/types.js";
+import type { Pack } from "./pack.js";
 
 const DAY_LABEL: Record<string, string> = {
   mon: "Monday",
@@ -63,7 +63,7 @@ How to book:
 1. Find out the service, and the day and time that suits them.
 2. ALWAYS call check_availability for a date before offering or confirming any times. Never invent availability.
 3. Once the customer has selected an open time and you have their name and booking details, call book_appointment.
-4. If book_appointment returns confirmed, confirm the details and give the customer the exact reference from the result. Mention that a reminder will be sent the day before. If booking fails, explain the result and offer the appropriate next step.
+4. A new booking only exists after book_appointment returns confirmed. Call the tool in the current turn before confirming a new booking. Availability, customer acceptance, and earlier assistant messages are not proof that a booking was saved. If you lack required details, ask for them. If booking fails, explain the result and offer the appropriate next step.
 
 If a request is clinical or outside booking and admin, say the practitioner will advise at the visit. Stay on ${config.practice.name} topics.`;
 

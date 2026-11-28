@@ -20,6 +20,7 @@ export async function sendText(to: string, body: string): Promise<void> {
   if (!id || !token) throw new Error("WhatsApp env not set");
   const res = await fetch(`${BASE}/${id}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -45,6 +46,7 @@ export async function sendTemplate(
     : [];
   const res = await fetch(`${BASE}/${id}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",

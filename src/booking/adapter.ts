@@ -15,5 +15,6 @@ export interface BookingBackend {
     startISO: string;
     durationMin: number;
   }): Promise<{ eventId: string }>;
+  moveEvent(eventId: string, startISO: string, durationMin: number): Promise<void>;
   cancelEvent(eventId: string): Promise<void>;
 }

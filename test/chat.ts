@@ -1,9 +1,9 @@
 import "dotenv/config";
 import readline from "node:readline";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { handleMessage } from "../src/handler";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { handleMessage } from "../src/handler.js";
 
 // Terminal chat with the receptionist. Needs only ANTHROPIC_API_KEY.
 // Usage: npm run chat            (defaults to the meridian config)

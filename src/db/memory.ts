@@ -11,7 +11,8 @@ import type {
   Message,
   ReservationLoad,
   Store,
-} from "./types";
+  PractitionerNotice,
+} from "./types.js";
 
 // In-memory store for dev and the chat harness.
 export class MemoryStore implements Store {
@@ -21,6 +22,59 @@ export class MemoryStore implements Store {
   private histories = new Map<string, Message[]>();
   private engagements: Engagement[] = [];
   private seenMessages = new Set<string>();
+  private practitionerNotices = new Map<string, PractitionerNotice & { sent?: boolean; expiresAt: string; availableAt: number; lockedUntil: number }>();
+  private dailyKeys = new Set<string>();
+
+  constructor(private practitionerRecipients: Record<string, string> = {}) {}
+
+  private queueChange(booking: Engagement, action: string, previousStartsAt?: string): void {
+    const recipient = this.practitionerRecipients[booking.businessId];
+    if (!recipient || booking.kind !== "appointment" || !booking.startsAt) return;
+    const id = randomUUID();
+    this.practitionerNotices.set(id, {
+      id, businessId: booking.businessId, recipient, kind: "change", leaseToken: "",
+      createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 864e5).toISOString(),
+      availableAt: 0, lockedUntil: 0,
+      payload: { action, reference: booking.reference, service: booking.service, bookingName: booking.bookingName, startsAt: booking.startsAt, previousStartsAt, durationMin: booking.durationMin },
+    });
+  }
+
+  async dailyAppointments(businessId: string, startISO: string, endISO: string): Promise<Engagement[]> {
+    return this.engagements.filter((booking) => booking.businessId === businessId && booking.kind === "appointment" &&
+      booking.status === "confirmed" && booking.startsAt && Date.parse(booking.startsAt) >= Date.parse(startISO) &&
+      Date.parse(booking.startsAt) < Date.parse(endISO)).sort((a, b) => a.startsAt!.localeCompare(b.startsAt!));
+  }
+
+  async enqueuePractitionerDaily(businessId: string, recipient: string, date: string, expiresAt: string, parts: Record<string, unknown>[]): Promise<void> {
+    if ([...this.practitionerNotices.values()].some((notice) => notice.businessId === businessId && notice.kind === "daily" && notice.payload.date === date)) return;
+    for (const [index, payload] of parts.entries()) {
+      const key = `${businessId}:${date}:${index}`;
+      if (this.dailyKeys.has(key)) continue;
+      this.dailyKeys.add(key);
+      const id = randomUUID();
+      this.practitionerNotices.set(id, { id, businessId, recipient, kind: "daily", payload,
+        createdAt: new Date().toISOString(), leaseToken: "", expiresAt, availableAt: 0, lockedUntil: 0 });
+    }
+  }
+
+  async claimPractitionerNotice(businessId: string): Promise<PractitionerNotice | null> {
+    if ([...this.practitionerNotices.values()].some((notice) => notice.businessId === businessId && !notice.sent && notice.lockedUntil > Date.now())) return null;
+    const notice = [...this.practitionerNotices.values()].find((entry) => entry.businessId === businessId &&
+      !entry.sent && entry.availableAt <= Date.now() && entry.lockedUntil <= Date.now() && Date.parse(entry.expiresAt) > Date.now());
+    if (!notice) return null;
+    notice.leaseToken = randomUUID();
+    notice.lockedUntil = Date.now() + 120_000;
+    return { ...notice };
+  }
+
+  async finishPractitionerNotice(id: string, leaseToken: string, sent: boolean): Promise<void> {
+    const notice = this.practitionerNotices.get(id);
+    if (!notice || notice.leaseToken !== leaseToken || notice.sent) throw new Error("Notification claim no longer held");
+    notice.sent = sent;
+    notice.lockedUntil = 0;
+    notice.leaseToken = "";
+    notice.availableAt = sent ? 0 : Date.now() + 60_000;
+  }
 
   async getOrCreateCustomer(_businessId: string, waPhone: string): Promise<Customer> {
     let c = this.customers.get(waPhone);
@@ -55,6 +109,7 @@ export class MemoryStore implements Store {
   async createEngagement(e: Omit<Engagement, "id">): Promise<Engagement> {
     const full = { ...e, id: randomUUID() };
     this.engagements.push(full);
+    if (full.status === "confirmed") this.queueChange(full, "New booking");
     return full;
   }
 
@@ -101,9 +156,23 @@ export class MemoryStore implements Store {
     );
   }
 
+  async upcomingBookings(businessId: string, customerId: string, nowISO: string): Promise<Engagement[]> {
+    const now = Date.parse(nowISO);
+    return this.engagements.filter((booking) =>
+      booking.businessId === businessId && booking.customerId === customerId &&
+      booking.status === "confirmed" && (booking.kind === "appointment" || booking.kind === "reservation") &&
+      booking.startsAt && Date.parse(booking.startsAt) >= now,
+    ).sort((a, b) => Date.parse(a.startsAt!) - Date.parse(b.startsAt!));
+  }
+
   async updateEngagement(id: string, patch: Partial<Engagement>): Promise<void> {
     const e = this.engagements.find((x) => x.id === id);
-    if (e) Object.assign(e, patch);
+    if (!e) return;
+    const previous = { ...e };
+    Object.assign(e, patch);
+    if (previous.status !== "confirmed") return;
+    if (e.status === "cancelled") this.queueChange(e, "Cancelled", previous.startsAt);
+    else if (e.status === "confirmed" && e.startsAt !== previous.startsAt) this.queueChange(e, "Rescheduled", previous.startsAt);
   }
 
   private toDueMessage(e: Engagement): DueMessage | null {

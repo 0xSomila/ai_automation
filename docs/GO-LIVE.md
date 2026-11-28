@@ -45,7 +45,7 @@ Calendar backend. With WhatsApp env set, it sends via the WhatsApp notifier.
   tick means the webhook is verified.
 - `WHATSAPP_APP_SECRET` (Meta app secret) is what the Core verifies each POST against.
 
-## 4. Submit the reminder template
+## 4. Submit the reminder and follow-up templates
 
 Reminders are sent outside WhatsApp's 24-hour window, so Meta requires an approved template.
 Each client has their own WhatsApp number (their own WABA), so bake the business name into the
@@ -64,13 +64,32 @@ Core's `Notifier` params `[name, service, date, time]`.
 Submit it in Meta Business Manager and wait for approval before relying on reminders.
 (For a different client, change the baked business name and submit under their WABA.)
 
-## 5. Turn on reminders in n8n
+Submit `appointment_followup` as a Utility template in English. The two body parameters
+are the customer name and service, in that order.
+
+```text
+Hi {{1}}, thank you for attending your {{2}} at Meridian Physiotherapy. If you have a question about this appointment, reply here.
+```
+
+### Show both messages in a Meridian demo
+
+Run `npm run demo:notifications` to preview a fictional reminder and follow-up in a few
+seconds. This advances the clock for the two scheduled jobs and uses an in-memory booking.
+For delivery to WhatsApp, wait for both templates to be approved and set
+`MERIDIAN_DEMO_RECIPIENT` in the ignored local `.env` to your own approved recipient in
+international format (including `+`). Then run `npm run demo:notifications -- --whatsapp`.
+The live option uses the Meridian Meta test sender and sends one reminder followed by one
+follow-up. It leaves Supabase and Google Calendar booking records untouched.
+
+## 5. Turn on reminders and follow-ups in n8n
 
 - Open the `C7 Reminders` workflow (n8n id `otPtBLVUlBLj59Zs`).
 - Set `$env.CORE_BASE_URL` to the deployed Core URL.
 - Configure the `C7 Core Shared Secret` credential (httpTemplatedCustomAuth, header
   `X-C7-Secret` = `N8N_WEBHOOK_SECRET`).
 - Publish (activate) the workflow.
+- Apply the same Core URL and credential to `C7 Follow-up` (n8n id `6GNo7z13BuHHqfgG`)
+  and publish it after Meta approves the follow-up template.
 
 ## 6. Verification checklist
 
@@ -88,3 +107,7 @@ Submit it in Meta Business Manager and wait for approval before relying on remin
 
 - Deactivate the Meta webhook subscription (stops inbound) and unpublish the n8n reminders
   workflow (stops outbound). The Core can keep running; no customer traffic reaches it.
+
+## Practitioner notifications
+
+Daily schedules and appointment change alerts are described in [PRACTITIONER-UPDATES.md](PRACTITIONER-UPDATES.md). Apply its notification migration and approve its two dedicated templates before relying on delivery. The local pilot worker is `npm run practitioner:run`, and hosted orchestration calls `/cron/practitioner` every minute.

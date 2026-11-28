@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+dist
+output
+test
+practitioner-hidden.txt
+*.log
+clients/*.local.json
