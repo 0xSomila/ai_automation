@@ -25,6 +25,7 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
       type: "object",
       properties: {
         date: { type: "string", description: "Date as YYYY-MM-DD" },
+        weekday: { type: "string", description: "The weekday the customer named, if any (e.g. Monday). The date must fall on it." },
         service: { type: "string", description: "Service the customer wants, so its length is respected" },
         party: { type: "integer", description: "Party size, for table reservations" },
       },
@@ -41,6 +42,7 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
         name: { type: "string" },
         service: { type: "string" },
         date: { type: "string", description: "YYYY-MM-DD" },
+        weekday: { type: "string", description: "The weekday the customer named, if any (e.g. Monday). The date must fall on it." },
         time: { type: "string", description: "HH:MM" },
         party: { type: "integer", description: "Party size, for table reservations" },
       },
@@ -56,6 +58,7 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
       properties: {
         reference: { type: "string", description: "The booking reference, e.g. C7-AB12" },
         date: { type: "string", description: "New date YYYY-MM-DD" },
+        weekday: { type: "string", description: "The weekday the customer named, if any (e.g. Monday). The date must fall on it." },
         time: { type: "string", description: "New time HH:MM" },
       },
       required: ["date", "time"],
@@ -100,6 +103,50 @@ const REASON_NOTE: Record<DayReason, string> = {
     "It is too late to book that day: the remaining times have passed or fall inside the required notice. This is not a fully booked day. Offer one of nextAvailable.",
   fully_booked: "Every time that day is taken. Offer one of nextAvailable.",
 };
+
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const WEEKDAY_NAME = WEEKDAYS.map((d) => d[0].toUpperCase() + d.slice(1));
+
+function dayIndex(dateISO: string): number {
+  const t = Date.parse(`${dateISO}T12:00:00Z`);
+  return Number.isFinite(t) ? new Date(t).getUTCDay() : -1;
+}
+
+function weekdayIndex(raw: unknown): number {
+  const w = String(raw ?? "").trim().toLowerCase().replace(/\.$/, "");
+  if (w.length < 3) return -1;
+  return WEEKDAYS.findIndex((d) => d === w || d.startsWith(w));
+}
+
+function dateLabel(dateISO: string): string {
+  const i = dayIndex(dateISO);
+  const d = new Date(`${dateISO}T12:00:00Z`);
+  const month = new Intl.DateTimeFormat("en-ZA", { timeZone: "UTC", day: "numeric", month: "long" }).format(d);
+  return i < 0 ? dateISO : `${WEEKDAY_NAME[i]} ${month}`;
+}
+
+/**
+ * The model names a weekday and a date; they must agree. Returns a ready tool result when they
+ * do not (with the real upcoming dates for that weekday), or null when fine or no weekday given.
+ */
+function weekdayMismatch(dateISO: string, weekday: unknown, timeZone: string, now: Date = new Date()): string | null {
+  const want = weekdayIndex(weekday);
+  if (want < 0) return null;
+  const actual = dayIndex(dateISO);
+  if (actual < 0 || actual === want) return null;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+  const upcoming: string[] = [];
+  for (let i = 0; i < 15 && upcoming.length < 2; i++) {
+    const d = new Date(Date.parse(`${today}T12:00:00Z`) + i * 864e5).toISOString().slice(0, 10);
+    if (dayIndex(d) === want) upcoming.push(d);
+  }
+  return JSON.stringify({
+    status: "date_mismatch",
+    date: dateISO,
+    message: `${dateISO} is a ${WEEKDAY_NAME[actual]} (${dateLabel(dateISO)}), not a ${WEEKDAY_NAME[want]}. Tell the customer, then ask which they mean. Upcoming ${WEEKDAY_NAME[want]} dates: ${upcoming.map((d) => `${dateLabel(d)} (${d})`).join(", ")}.`,
+    upcoming,
+  });
+}
 
 function toParty(raw: unknown): number {
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
@@ -153,6 +200,8 @@ export async function executeTool(
   if (name === "check_availability") {
     const date = String(input.date ?? "").trim();
     const party = toParty(input.party);
+    const mismatch = weekdayMismatch(date, input.weekday, timeZone);
+    if (mismatch) return mismatch;
 
     if (isCovers) {
       const open = computeCoversSlots(ctx.config, date, await ctx.store.reservationsOn(ctx.businessId, date), party);
@@ -170,7 +219,7 @@ export async function executeTool(
     const durationMin = resolveService(ctx, String(input.service ?? ""))?.durationMin;
     const now = new Date();
     const status = dayStatus(ctx.config, date, await ctx.backend.getBusy(date, timeZone), now, durationMin);
-    if (status.open.length > 0) return JSON.stringify({ date, open: status.open });
+    if (status.open.length > 0) return JSON.stringify({ date, day: dateLabel(date), open: status.open });
 
     // Empty day: say why, and look ahead so the model offers real times, not guesses.
     const nextAvailable: { date: string; open: string[] }[] = [];
@@ -183,7 +232,7 @@ export async function executeTool(
       if (day.open.length > 0) nextAvailable.push({ date: d, open: day.open.slice(0, 6) });
       if (nextAvailable.length >= 3) break;
     }
-    return JSON.stringify({ date, open: [], reason: status.reason, note: REASON_NOTE[status.reason], nextAvailable });
+    return JSON.stringify({ date, day: dateLabel(date), open: [], reason: status.reason, note: REASON_NOTE[status.reason], nextAvailable });
   }
 
   if (name === "book_appointment") {
@@ -192,6 +241,8 @@ export async function executeTool(
     const name_ = String(input.name ?? "").trim();
     const service = String(input.service ?? "").trim();
     const party = toParty(input.party);
+    const mismatch = weekdayMismatch(date, input.weekday, timeZone);
+    if (mismatch) return mismatch;
 
     if (isCovers) {
       const limit = ctx.config.partySizeLimit;
@@ -267,6 +318,8 @@ export async function executeTool(
     const reference = String(input.reference ?? "").trim().toUpperCase();
     const date = String(input.date ?? "").trim();
     const time = String(input.time ?? "").trim();
+    const mismatch = weekdayMismatch(date, input.weekday, timeZone);
+    if (mismatch) return mismatch;
 
     const eng = await findBooking(ctx, reference);
     if (typeof eng === "string") return eng;

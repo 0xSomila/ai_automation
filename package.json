@@ -28,6 +28,7 @@
     "test:covers": "tsx test/covers.ts",
     "test:availability": "tsx test/availability.ts",
     "test:booking-guard": "tsx test/bookingGuard.ts",
+    "test:dates": "tsx test/dates.ts",
     "demo:notifications": "tsx test/notificationDemo.ts",
     "test:booking-integration": "tsx test/bookingIntegration.ts"
   },
