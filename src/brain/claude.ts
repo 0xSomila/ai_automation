@@ -45,6 +45,10 @@ const DIRECT_CHANGE = /^(?:actually,?\s+)?(?:please\s+|can you\s+|could you\s+|i
 const CHANGE_CONFIRMATION = /\b(?:i(?:['’]ve| have)?\s+(?:successfully\s+)?(?:cancelled|canceled|rescheduled|moved|postponed)|(?:appointment|booking)\b[^.!?\n]{0,100}\b(?:has been|is now|was)\s+(?:successfully\s+)?(?:cancelled|canceled|rescheduled|moved|postponed))\b/i;
 
 const BOOKING_CONFIRMATION = /\b(?:you(?:['’]re| are)\s+(?:all\s+)?booked|(?:i(?:['’]ve| have)|we(?:['’]ve| have))\s+booked|(?:appointment|consultation|reservation|booking|table)\b[^.!?\n]{0,80}\b(?:is|was|has been)\s+(?:now\s+)?(?:booked|confirmed)|(?:booking\s+)?reference\s*(?:is\s*)?[:#]?\s*C7-[A-Z0-9]+)\b/i;
+// A reply that states a booking was just made. Describing existing bookings ("your appointment is
+// confirmed for Monday, reference C7-AB12") is not this, so a lookup reply never trips the guard.
+const NEW_BOOKING_CLAIM = /\b(?:you(?:['’]re| are)\s+(?:all\s+)?(?:now\s+)?booked|(?:i(?:['’]ve| have)|we(?:['’]ve| have))\s+(?:just\s+)?booked|(?:has|have)\s+been\s+(?:now\s+)?booked|is\s+now\s+(?:booked|confirmed))\b/i;
+const BOOKING_REF = /\bC7-[A-Z0-9]+\b/gi;
 
 interface ConfirmedBooking {
   reference: string;
@@ -208,6 +212,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
   let retriedBookingConfirmation = false;
   let forceBookingCall = false; // set when the guard trips: the retry must call the tool, not narrate
   const toolLog: string[] = [];
+  const seenRefs = new Set<string>(); // booking references returned by tools this turn
   bookingTurn: for (let round = 0; round <= MAX_ROUNDS; round++) {
     rounds = round + 1;
     const resp = await modelClient().messages.create({
@@ -240,10 +245,16 @@ export async function runBrain(inp: BrainInput): Promise<string> {
         finalText = "I couldn't confirm that change. Please confirm the original appointment date and time.";
         break;
       }
-      if (!change && inp.pack.tools.includes("book_appointment") && BOOKING_CONFIRMATION.test(text)) {
+      const listedThisTurn = toolLog.includes("list_upcoming_bookings");
+      const echoesToolData = (text.match(BOOKING_REF) ?? []).every((ref) => seenRefs.has(ref.toUpperCase()));
+      const describesExistingBookings = listedThisTurn && echoesToolData && !NEW_BOOKING_CLAIM.test(text);
+      if (describesExistingBookings && BOOKING_CONFIRMATION.test(text)) toolLog.push("guard:skipped-lookup-reply");
+      if (!change && !describesExistingBookings && inp.pack.tools.includes("book_appointment") && BOOKING_CONFIRMATION.test(text)) {
         if (!retriedBookingConfirmation && round < MAX_ROUNDS) {
           retriedBookingConfirmation = true;
-          forceBookingCall = true;
+          // Force the booking tool only when this turn was not a lookup: a customer asking about
+          // existing bookings must never have a new one created for them.
+          forceBookingCall = !listedThisTurn;
           toolLog.push("guard:confirmation-without-tool");
           messages.push(
             { role: "assistant", content: text },
@@ -280,9 +291,10 @@ export async function runBrain(inp: BrainInput): Promise<string> {
         continue;
       }
       if (forcedThisRound && tu.name === "book_appointment") {
-        // A forced call must not invent details: the name has to appear in what the customer said.
+        // A forced call must not invent details: the name has to be in the customer's latest message,
+        // so a name given earlier cannot be reused to book something the customer did not just ask for.
         const given = String(args.name ?? "").trim().toLowerCase();
-        const saidByCustomer = history.some((m) => m.role === "user" && given.length > 1 && m.content.toLowerCase().includes(given));
+        const saidByCustomer = given.length > 1 && inp.userText.toLowerCase().includes(given);
         if (!saidByCustomer) {
           toolLog.push("book_appointment:rejected-unverified-name");
           results.push({ type: "tool_result", tool_use_id: tu.id, content: "The customer has not given their name yet. Ask for it. Do not invent one.", is_error: true });
@@ -292,6 +304,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
       toolLog.push(tu.name);
       inp.hooks?.onToolUse?.(tu.name, args);
       const out = await executeTool(tu.name, args, ctx);
+      for (const ref of out.match(BOOKING_REF) ?? []) seenRefs.add(ref.toUpperCase());
       if (tu.name === "book_appointment") {
         const result = JSON.parse(out) as ConfirmedBooking & { status: string };
         if (result.status === "confirmed") {

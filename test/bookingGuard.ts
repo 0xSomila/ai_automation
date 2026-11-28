@@ -5,6 +5,9 @@ import { MemoryStore } from "../src/db/memory.js";
 import { MemoryBackend } from "../src/booking/memory.js";
 import { MemoryNotifier } from "../src/channel/notifier.js";
 import { handleMessage } from "../src/handler.js";
+import { loadConfig } from "../src/config/load.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool } from "../src/brain/tools.js";
 
 // Regression for the live failure (Sat 28 Nov, "Trevor McCain"): the model wrote a
 // booking confirmation without calling book_appointment, the guard retried, the
@@ -49,7 +52,7 @@ const book = (name: string, date: string): Scripted => ({
   stop_reason: "tool_use",
 });
 
-async function scenario(customerSays: string, replies: Scripted[]) {
+async function scenario(customerSays: string, replies: Scripted[] | ((reference: string) => Scripted[]), opts: { preBook?: boolean; earlier?: string[] } = {}) {
   const store = new MemoryStore();
   const backend = new MemoryBackend();
   const deps = { store, backend, notifier: new MemoryNotifier() };
@@ -57,15 +60,25 @@ async function scenario(customerSays: string, replies: Scripted[]) {
   const customer = await store.getOrCreateCustomer("meridian", from);
   const conv = await store.getOrCreateConversation("meridian", customer.id);
   const date = nextMonday();
+  for (const line of opts.earlier ?? []) await store.appendMessage(conv, { role: "user", content: line });
   await store.appendMessage(conv, { role: "user", content: "I want to book a sports massage for Monday" });
   await store.appendMessage(conv, { role: "assistant", content: "Great! What time on Monday would suit you?" });
   await store.appendMessage(conv, { role: "user", content: "12:00" });
   await store.appendMessage(conv, { role: "assistant", content: "Perfect, 12:00 on Monday is available for your sports massage. What's your name, please?" });
-  script = [...replies];
+  let reference = "";
+  if (opts.preBook) {
+    const ctx = { config: loadConfig("meridian"), pack: loadPack("practitioner"), backend, store, businessId: "meridian", customerId: customer.id };
+    const booked = JSON.parse(await executeTool("book_appointment", { name: "Somila Test", service: "Sports massage", date, time: "12:00" }, ctx));
+    assert.equal(booked.status, "confirmed");
+    reference = booked.reference;
+  }
+  script = typeof replies === "function" ? replies(reference) : [...replies];
   requests.length = 0;
   const reply = await handleMessage(deps, { businessSlug: "meridian", from, text: customerSays });
-  return { reply, backend, date, store };
+  return { reply, backend, date, store, reference };
 }
+
+const list: Scripted = { content: [{ type: "tool_use", id: "tu_l", name: "list_upcoming_bookings", input: {} }], stop_reason: "tool_use" };
 
 async function main(): Promise<void> {
   const date = nextMonday();
@@ -88,6 +101,34 @@ async function main(): Promise<void> {
   const c = await scenario("Trevor McCain", [text("Your booking is confirmed!"), text("You are booked in for 12:00.")]);
   assert.match(c.reply, /full name and the day and time/);
   assert.equal((await c.backend.getBusy(c.date, "Africa/Johannesburg")).length, 0);
+
+  // 4. The live slip: "look up my appointments". The model lists the real booking, reference
+  //    included. That reply must reach the customer untouched, with no retry and no forced booking.
+  const d = await scenario("Look up my upcoming appointments", (ref) => [
+    list,
+    text(`You have one upcoming appointment: Sports massage on Mon, 30 Nov at 12:00, reference ${ref}.`),
+  ], { preBook: true });
+  assert.equal(requests.length, 2, "a lookup turn is two rounds with no guard retry");
+  assert.ok(requests.every((r) => r.tool_choice === undefined), "nothing is forced on a lookup");
+  assert.ok(/Sports massage/.test(d.reply) && d.reply.includes(d.reference), "customer sees their real booking");
+  assert.equal((await d.backend.getBusy(d.date, "Africa/Johannesburg")).length, 1, "no extra booking was made");
+
+  // 5. A lookup turn whose reply invents a reference is still caught, but never forced to book.
+  const e = await scenario("Look up my upcoming appointments", [
+    list,
+    text("Your appointment is confirmed, reference C7-ZZZZ."),
+    text("I could not find an upcoming appointment for you."),
+  ]);
+  assert.equal(requests.length, 3, "guard retried once");
+  assert.equal(requests[2].tool_choice, undefined, "a lookup turn is never forced to book");
+  assert.match(e.reply, /could not find/);
+  assert.equal((await e.backend.getBusy(e.date, "Africa/Johannesburg")).length, 0, "nothing was booked");
+
+  // 6. A name given earlier in the chat cannot be reused by a forced call on a later, unrelated message.
+  const f = await scenario("ok thanks", [text("You're all booked, see you then!"), book("Trevor McCain", date), text("Could I have your name, please?")], {
+    earlier: ["Hi, my name is Trevor McCain"],
+  });
+  assert.equal((await f.backend.getBusy(f.date, "Africa/Johannesburg")).length, 0, "no booking from a stale name");
 
   console.log("booking guard: all checks passed");
   mock.close();
