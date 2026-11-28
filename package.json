@@ -26,6 +26,8 @@
     "test:routing": "tsx test/routing.ts",
     "test:lifecycle": "tsx test/lifecycle.ts",
     "test:covers": "tsx test/covers.ts",
+    "test:availability": "tsx test/availability.ts",
+    "test:booking-guard": "tsx test/bookingGuard.ts",
     "demo:notifications": "tsx test/notificationDemo.ts",
     "test:booking-integration": "tsx test/bookingIntegration.ts"
   },

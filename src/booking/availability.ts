@@ -31,6 +31,24 @@ export function computeOpenSlots(
   dateISO: string,
   busy: BusyBlock[],
   now: Date = new Date(),
+  durationMin?: number,
+): string[] {
+  return openSlots(config, dateISO, busy, now, durationMin, true);
+}
+
+/**
+ * Shared grid walk. A slot fits when the whole service (durationMin, default one
+ * grid step) sits inside opening hours and overlaps no busy block. When
+ * `applyTime` is false the lead time and "already passed" checks are skipped, so
+ * dayStatus can tell a full day apart from one that is simply too late to book.
+ */
+function openSlots(
+  config: Config,
+  dateISO: string,
+  busy: BusyBlock[],
+  now: Date,
+  durationMin: number | undefined,
+  applyTime: boolean,
 ): string[] {
   const hours = config.hours[weekdayKey(dateISO)];
   if (!hours) return []; // closed that day
@@ -43,6 +61,7 @@ export function computeOpenSlots(
   const earliest = new Date(now.getTime() + config.booking.leadTimeHours * 36e5);
   const [open, close] = hours;
   const step = config.booking.slotStepMin;
+  const length = Math.max(step, durationMin ?? step);
 
   const busyRanges = busy.map((b) => [
     new Date(b.start).getTime(),
@@ -50,14 +69,59 @@ export function computeOpenSlots(
   ]);
 
   const slots: string[] = [];
-  for (let m = toMinutes(open); m + step <= toMinutes(close); m += step) {
+  for (let m = toMinutes(open); m + length <= toMinutes(close); m += step) {
     const time = fromMinutes(m);
     const t = practiceTime(dateISO, time, timeZone);
-    if (!Number.isFinite(t) || t < earliest.getTime()) continue;
-    const covered = busyRanges.some(([bs, be]) => t >= bs && t < be);
-    if (!covered) slots.push(time);
+    if (!Number.isFinite(t)) continue;
+    if (applyTime && t < earliest.getTime()) continue;
+    const end = t + length * 60000;
+    const overlaps = busyRanges.some(([bs, be]) => t < be && end > bs);
+    if (!overlaps) slots.push(time);
   }
   return slots;
+}
+
+export type DayReason = "open" | "closed" | "beyond_horizon" | "past_cutoff" | "fully_booked";
+
+/**
+ * Why a day has (or has no) open times. Lets the brain tell the customer the
+ * truth: a closed day, a day past the booking window, a day that is too late to
+ * book (lead time or already over), and a genuinely full day are different answers.
+ */
+export function dayStatus(
+  config: Config,
+  dateISO: string,
+  busy: BusyBlock[],
+  now: Date = new Date(),
+  durationMin?: number,
+): { reason: DayReason; open: string[] } {
+  const open = openSlots(config, dateISO, busy, now, durationMin, true);
+  if (open.length > 0) return { reason: "open", open };
+
+  if (!config.hours[weekdayKey(dateISO)]) return { reason: "closed", open };
+
+  const horizon = now.getTime() + config.booking.maxDaysAhead * 864e5;
+  const dayStart = practiceTime(dateISO, "00:00", config.practice.timezone);
+  if (Number.isFinite(dayStart) && dayStart > horizon) return { reason: "beyond_horizon", open };
+
+  // Free once time rules are ignored means the calendar is not what blocks it.
+  const ignoringTime = openSlots(config, dateISO, busy, now, durationMin, false);
+  return { reason: ignoringTime.length > 0 ? "past_cutoff" : "fully_booked", open };
+}
+
+/** Calendar dates (YYYY-MM-DD) after `dateISO` that fall in the practice's open days and booking window. */
+export function bookableDatesAfter(config: Config, dateISO: string, now: Date = new Date(), limit = 14): string[] {
+  const out: string[] = [];
+  const base = Date.parse(`${dateISO}T12:00:00Z`);
+  if (!Number.isFinite(base)) return out;
+  for (let i = 1; out.length < limit && i <= config.booking.maxDaysAhead + 1; i++) {
+    const d = new Date(base + i * 864e5).toISOString().slice(0, 10);
+    if (!config.hours[weekdayKey(d)]) continue;
+    const dayStart = practiceTime(d, "00:00", config.practice.timezone);
+    if (!Number.isFinite(dayStart) || dayStart > now.getTime() + config.booking.maxDaysAhead * 864e5) break;
+    out.push(d);
+  }
+  return out;
 }
 
 /**

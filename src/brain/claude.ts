@@ -206,6 +206,8 @@ export async function runBrain(inp: BrainInput): Promise<string> {
   let cacheWrite = 0;
   let rounds = 0;
   let retriedBookingConfirmation = false;
+  let forceBookingCall = false; // set when the guard trips: the retry must call the tool, not narrate
+  const toolLog: string[] = [];
   bookingTurn: for (let round = 0; round <= MAX_ROUNDS; round++) {
     rounds = round + 1;
     const resp = await modelClient().messages.create({
@@ -214,7 +216,10 @@ export async function runBrain(inp: BrainInput): Promise<string> {
       system,
       messages,
       tools,
+      ...(forceBookingCall ? { tool_choice: { type: "tool" as const, name: "book_appointment" } } : {}),
     });
+    const forcedThisRound = forceBookingCall;
+    forceBookingCall = false;
 
     inTokens += resp.usage.input_tokens;
     outTokens += resp.usage.output_tokens;
@@ -238,6 +243,8 @@ export async function runBrain(inp: BrainInput): Promise<string> {
       if (!change && inp.pack.tools.includes("book_appointment") && BOOKING_CONFIRMATION.test(text)) {
         if (!retriedBookingConfirmation && round < MAX_ROUNDS) {
           retriedBookingConfirmation = true;
+          forceBookingCall = true;
+          toolLog.push("guard:confirmation-without-tool");
           messages.push(
             { role: "assistant", content: text },
             {
@@ -247,7 +254,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
           );
           continue;
         }
-        finalText = "I couldn't confirm the booking. Please tell me the service, date, time and name you'd like to book under.";
+        finalText = "Sorry, I couldn't complete that booking. Please reply with your full name and the day and time you'd like, for example \"Thandi Dlamini, Monday 12:00\", and I'll book it.";
         break;
       }
       finalText = text;
@@ -272,6 +279,17 @@ export async function runBrain(inp: BrainInput): Promise<string> {
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "This action is unavailable for the current request.", is_error: true });
         continue;
       }
+      if (forcedThisRound && tu.name === "book_appointment") {
+        // A forced call must not invent details: the name has to appear in what the customer said.
+        const given = String(args.name ?? "").trim().toLowerCase();
+        const saidByCustomer = history.some((m) => m.role === "user" && given.length > 1 && m.content.toLowerCase().includes(given));
+        if (!saidByCustomer) {
+          toolLog.push("book_appointment:rejected-unverified-name");
+          results.push({ type: "tool_result", tool_use_id: tu.id, content: "The customer has not given their name yet. Ask for it. Do not invent one.", is_error: true });
+          continue;
+        }
+      }
+      toolLog.push(tu.name);
       inp.hooks?.onToolUse?.(tu.name, args);
       const out = await executeTool(tu.name, args, ctx);
       if (tu.name === "book_appointment") {
@@ -300,6 +318,7 @@ export async function runBrain(inp: BrainInput): Promise<string> {
 
   // Log token usage per handled message (CLAUDE.md rule).
   const conv = inp.conversationId.slice(0, 8);
+  console.error(`[tools] conv=${conv} calls=${toolLog.join(",") || "none"}`);
   console.error(
     `[tokens] conv=${conv} rounds=${rounds} in=${inTokens} out=${outTokens} cacheRead=${cacheRead} cacheWrite=${cacheWrite}`,
   );
