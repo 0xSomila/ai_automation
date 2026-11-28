@@ -162,8 +162,19 @@ function resolveService(ctx: ToolCtx, service: string) {
   );
 }
 
-function describeBooking(booking: Engagement) {
-  return { reference: booking.reference, service: booking.service, startsAt: booking.startsAt };
+// Bookings are stored as UTC instants. The model must never convert them: it read a 12:00
+// Johannesburg booking as "10:00" (the UTC clock time). Hand it the practice's local day,
+// date and time instead, and no raw instant to misread.
+function describeBooking(booking: Engagement, timeZone: string) {
+  const start = booking.startsAt ? new Date(booking.startsAt) : null;
+  const local = start && Number.isFinite(start.getTime())
+    ? {
+        day: new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "long" }).format(start),
+        date: new Intl.DateTimeFormat("en-CA", { timeZone }).format(start),
+        time: new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(start),
+      }
+    : {};
+  return { reference: booking.reference, service: booking.service, ...local, durationMin: booking.durationMin };
 }
 
 async function findBooking(ctx: ToolCtx, reference: string): Promise<Engagement | string> {
@@ -174,7 +185,7 @@ async function findBooking(ctx: ToolCtx, reference: string): Promise<Engagement 
     const bookings = await ctx.store.upcomingBookings(ctx.businessId, ctx.customerId, new Date().toISOString());
     if (bookings.length === 1) return bookings[0];
     if (bookings.length > 1) {
-      return JSON.stringify({ status: "needs_selection", bookings: bookings.map(describeBooking) });
+      return JSON.stringify({ status: "needs_selection", timeZone: ctx.config.practice.timezone, bookings: bookings.map((b) => describeBooking(b, ctx.config.practice.timezone)) });
     }
   }
   return JSON.stringify({ status: "not_found", message: "No matching active booking for this customer." });
@@ -194,7 +205,7 @@ export async function executeTool(
 
   if (name === "list_upcoming_bookings") {
     const bookings = await ctx.store.upcomingBookings(ctx.businessId, ctx.customerId, new Date().toISOString());
-    return JSON.stringify({ timeZone, bookings: bookings.map(describeBooking) });
+    return JSON.stringify({ timeZone, bookings: bookings.map((b) => describeBooking(b, timeZone)) });
   }
 
   if (name === "check_availability") {
