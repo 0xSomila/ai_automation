@@ -16,6 +16,7 @@ export interface Engagement {
   customerId: string;
   kind: "appointment" | "reservation" | "order" | "lead";
   service?: string;
+  bookingName?: string;
   resource?: string;
   party?: number;
   startsAt?: string;
@@ -26,6 +27,16 @@ export interface Engagement {
   reminderSentAt?: string;
   followupSentAt?: string;
   waitlistNotifiedAt?: string;
+}
+
+export interface PractitionerNotice {
+  id: string;
+  businessId: string;
+  recipient: string;
+  kind: "change" | "daily";
+  payload: Record<string, unknown>;
+  createdAt: string;
+  leaseToken: string;
 }
 
 // A booking due a message (reminder or follow-up), joined with the customer's
@@ -64,6 +75,10 @@ export interface DueWaitlist {
 // The Core only knows this interface. Dev uses the in-memory store; prod
 // uses the Supabase store. Swapping them changes nothing in the brain.
 export interface Store {
+  dailyAppointments(businessId: string, startISO: string, endISO: string): Promise<Engagement[]>;
+  enqueuePractitionerDaily(businessId: string, recipient: string, date: string, expiresAt: string, parts: Record<string, unknown>[]): Promise<void>;
+  claimPractitionerNotice(businessId: string): Promise<PractitionerNotice | null>;
+  finishPractitionerNotice(id: string, leaseToken: string, sent: boolean): Promise<void>;
   getOrCreateCustomer(businessId: string, waPhone: string): Promise<Customer>;
   getOrCreateConversation(businessId: string, customerId: string): Promise<string>;
   getHistory(conversationId: string): Promise<Message[]>;
@@ -79,6 +94,7 @@ export interface Store {
 
   // Booking lifecycle (reschedule, cancel, waitlist).
   findEngagementByReference(businessId: string, reference: string): Promise<Engagement | null>;
+  upcomingBookings(businessId: string, customerId: string, nowISO: string): Promise<Engagement[]>;
   updateEngagement(id: string, patch: Partial<Engagement>): Promise<void>;
 
   // Follow-up (daily): past confirmed/completed engagements with no follow-up sent.

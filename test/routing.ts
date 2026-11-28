@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { resolveBusinessByPhoneNumberId, resetChannelIndex } from "../src/config/load";
+import { resolveBusinessByPhoneNumberId, resetChannelIndex } from "../src/config/load.js";
 
 // Phase 3 gate (routing side): an inbound WhatsApp phone_number_id resolves to the
 // right client slug by scanning client configs. Unknown numbers resolve to null so

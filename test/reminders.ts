@@ -1,9 +1,9 @@
 import "dotenv/config";
 import assert from "node:assert";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { runReminders } from "../src/cron";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { runReminders } from "../src/cron.js";
 
 // Phase 2 gate: a seeded due booking produces exactly one reminder and gets
 // stamped; a second run sends nothing. Needs no API or external services.

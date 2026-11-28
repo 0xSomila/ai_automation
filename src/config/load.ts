@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import type { Config } from "./types";
+import type { Config } from "./types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const clientsDir = join(here, "..", "..", "clients");

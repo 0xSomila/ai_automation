@@ -4,6 +4,8 @@ AI receptionist for appointment and reservation businesses. One engine, many ver
 
 Built by Catalyst 7. Delivery cell: Somila (lead, config and sign-off), Tshiamo (build).
 
+The practice dashboard is available at `/dashboard/` after `npm run dev`. It opens with a fictional, interactive Meridian demo; an optional protected connection shows read-only pilot bookings. See [dashboard walkthrough](docs/DASHBOARD.md).
+
 ## Quick start (talk to it in your terminal, no WhatsApp needed)
 
 ```bash
@@ -58,5 +60,9 @@ Inbound messages route to the right client by the WhatsApp number in the config
 secret-guarded `GET /ops/summary` (persisted with the Supabase store).
 
 ## Adding a vertical
+
+Practitioner WhatsApp daily schedules and appointment-change alerts are documented in
+[docs/PRACTITIONER-UPDATES.md](docs/PRACTITIONER-UPDATES.md). The opt-in configuration uses the
+practice's time zone, and a stored queue supports retries and daily summary deduplication.
 
 Copy `verticals/practitioner/`, change `pack.json` intents and entities, write the `prompt.md` fragment, and add an availability override only if its resource model differs (restaurant uses covers, salon uses per-staff). Do not touch Core.

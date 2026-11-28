@@ -1,11 +1,11 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { GoogleCalendarBackend } from "../src/booking/googleCalendar";
-import { loadPack } from "../src/brain/pack";
-import { executeTool } from "../src/brain/tools";
-import { getConfig } from "../src/config/store";
-import { SupabaseStore } from "../src/db/supabase";
+import { GoogleCalendarBackend } from "../src/booking/googleCalendar.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool } from "../src/brain/tools.js";
+import { getConfig } from "../src/config/store.js";
+import { SupabaseStore } from "../src/db/supabase.js";
 
 // Run against a test calendar and database. Cancellation leaves a test record in Supabase.
 async function main(): Promise<void> {
@@ -63,9 +63,24 @@ async function main(): Promise<void> {
     assert.ok(busy.some((block) => Date.parse(block.start) <= start.getTime() && Date.parse(block.end) > start.getTime()));
     assert.ok(!(await call("check_availability", { date: slot.date })).open.includes(slot.time));
     console.log(`Verified ${reference} in Supabase and Google Calendar at ${slot.date} ${slot.time} (${timeZone}).`);
+
+    const { open } = await call("check_availability", { date: slot.date });
+    const nextTime = open.find((time: string) => time > slot!.time) ?? open[0];
+    assert.ok(nextTime, "No alternate Meridian test slot on the booked day.");
+    const moved = await call("reschedule_appointment", { date: slot.date, time: nextTime });
+    assert.equal(moved.status, "confirmed");
+    assert.equal(moved.reference, reference);
+    const rescheduled = await store.findEngagementByReference(businessId, reference);
+    assert.equal(rescheduled?.backendEventId, eventId);
+    assert.equal(timeFormat.format(new Date(rescheduled!.startsAt!)), nextTime);
+    const afterMove = (await call("check_availability", { date: slot.date })).open;
+    assert.ok(afterMove.includes(slot.time), "The original slot did not reopen after postponement.");
+    assert.ok(!afterMove.includes(nextTime), "The new slot is not blocked after postponement.");
+    slot.time = nextTime;
+    console.log("Postponed without a reference and kept the same Supabase reference and calendar event.");
   } finally {
     if (reference) {
-      const cancellation = await call("cancel_appointment", { reference });
+      const cancellation = await call("cancel_appointment", {});
       assert.equal(cancellation.status, "cancelled");
       const saved = await new SupabaseStore().findEngagementByReference(businessId, reference);
       assert.equal(saved?.status, "cancelled");

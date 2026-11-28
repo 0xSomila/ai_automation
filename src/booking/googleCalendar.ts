@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { google } from "googleapis";
-import type { BookingBackend, BusyBlock } from "./adapter";
-import { practiceDay } from "./time";
+import type { BookingBackend, BusyBlock } from "./adapter.js";
+import { practiceDay } from "./time.js";
 
 export interface GoogleCalendarOptions {
   calendarId?: string;
@@ -44,7 +44,9 @@ export class GoogleCalendarBackend implements BookingBackend {
     });
     this.calendar = google.calendar({ version: "v3", auth });
     this.calendarId = calendarId;
-    this.timeZone = opts.timeZone ?? process.env.TZ ?? "Africa/Johannesburg";
+    // Hosting runtimes can set TZ to POSIX values such as :UTC. Google needs
+    // an IANA calendar zone; the host's process clock must not choose it.
+    this.timeZone = opts.timeZone ?? process.env.GOOGLE_CALENDAR_TIMEZONE ?? "Africa/Johannesburg";
   }
 
   async getBusy(dateISO: string, timeZone = this.timeZone): Promise<BusyBlock[]> {
@@ -90,12 +92,29 @@ export class GoogleCalendarBackend implements BookingBackend {
     return { eventId: res.data.id! };
   }
 
+  async moveEvent(eventId: string, startISO: string, durationMin: number): Promise<void> {
+    const end = new Date(Date.parse(startISO) + durationMin * 60_000);
+    await this.calendar.events.patch({
+      calendarId: this.calendarId,
+      eventId,
+      requestBody: {
+        start: { dateTime: startISO, timeZone: this.timeZone },
+        end: { dateTime: end.toISOString(), timeZone: this.timeZone },
+      },
+    });
+  }
+
   async cancelEvent(eventId: string): Promise<void> {
     if (this.calendarId === process.env.MERIDIAN_RETENTION_CALENDAR_ID) {
       await this.eraseEvent(eventId);
       return;
     }
-    await this.calendar.events.delete({ calendarId: this.calendarId, eventId });
+    try {
+      await this.calendar.events.delete({ calendarId: this.calendarId, eventId });
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (status !== 404 && status !== 410) throw error;
+    }
   }
 
   async eraseEvent(eventId: string): Promise<void> {

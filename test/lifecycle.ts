@@ -1,12 +1,12 @@
 import "dotenv/config";
 import assert from "node:assert";
-import { MemoryStore } from "../src/db/memory";
-import { MemoryBackend } from "../src/booking/memory";
-import { MemoryNotifier } from "../src/channel/notifier";
-import { loadConfig } from "../src/config/load";
-import { loadPack } from "../src/brain/pack";
-import { executeTool, type ToolCtx } from "../src/brain/tools";
-import { runFollowup, runReactivation, runWaitlist } from "../src/cron";
+import { MemoryStore } from "../src/db/memory.js";
+import { MemoryBackend } from "../src/booking/memory.js";
+import { MemoryNotifier } from "../src/channel/notifier.js";
+import { loadConfig } from "../src/config/load.js";
+import { loadPack } from "../src/brain/pack.js";
+import { executeTool, type ToolCtx } from "../src/brain/tools.js";
+import { runFollowup, runReactivation, runWaitlist } from "../src/cron.js";
 
 // Phase 5 gate: the booking lifecycle tools (reschedule, cancel, join_waitlist)
 // and the follow-up, reactivation and waitlist jobs, driven directly against the
@@ -65,16 +65,43 @@ async function main(): Promise<void> {
   assert.strictEqual(savedTime, slot1.time, "stored instant preserves the local booking time");
 
   const slot2 = await firstOpen(ctx, [slot1.date]);
+  const stranger = await store.getOrCreateCustomer("meridian", "+27820009999");
+  const strangerCtx = { ...ctx, customerId: stranger.id };
+  assert.deepStrictEqual((await call("list_upcoming_bookings", {}, strangerCtx)).bookings, []);
+  assert.strictEqual(
+    (await call("cancel_appointment", { reference: booked.reference }, strangerCtx)).status, "not_found",
+    "a booking reference does not grant access to another customer's appointment",
+  );
+
   const moved = await call(
     "reschedule_appointment",
-    { reference: booked.reference, date: slot2.date, time: slot2.time },
+    { date: slot2.date, time: slot2.time },
     ctx,
   );
   assert.strictEqual(moved.status, "confirmed", "reschedule should confirm");
   assert.strictEqual(moved.date, slot2.date, "reschedule moved the date");
+  assert.strictEqual(moved.reference, booked.reference, "rescheduling keeps the reference");
+  assert.strictEqual(
+    (await store.findEngagementByReference(ctx.businessId, booked.reference))?.backendEventId,
+    saved?.backendEventId,
+    "rescheduling keeps the calendar event",
+  );
+  assert.ok((await call("check_availability", { date: slot1.date }, ctx)).open.includes(slot1.time));
 
-  const cancelled = await call("cancel_appointment", { reference: booked.reference }, ctx);
+  const secondBooking = await call(
+    "book_appointment",
+    { name: "Thandi", service: "Follow-up session", ...slot1 },
+    ctx,
+  );
+  assert.strictEqual((await call("cancel_appointment", {}, ctx)).status, "needs_selection");
+  assert.strictEqual(
+    (await call("cancel_appointment", { reference: secondBooking.reference }, ctx)).status, "cancelled",
+  );
+
+  const cancelled = await call("cancel_appointment", {}, ctx);
   assert.strictEqual(cancelled.status, "cancelled", "cancel should cancel");
+  assert.strictEqual(cancelled.reference, booked.reference);
+  assert.ok((await call("check_availability", { date: slot2.date }, ctx)).open.includes(slot2.time));
   const recancel = await call("cancel_appointment", { reference: booked.reference }, ctx);
   assert.strictEqual(recancel.status, "not_found", "re-cancel is not_found");
 
@@ -107,6 +134,18 @@ async function main(): Promise<void> {
   assert.strictEqual(f1.sent, 1, `followup should send 1, got ${f1.sent}`);
   const f2 = await runFollowup({ store, backend, notifier });
   assert.strictEqual(f2.sent, 0, "followup is idempotent");
+  await store.createEngagement({
+    businessId: "meridian",
+    customerId: fCustomer.id,
+    kind: "appointment",
+    startsAt: new Date(Date.now() - 10 * 60_000).toISOString(),
+    durationMin: 45,
+    status: "confirmed",
+  });
+  const during = await runFollowup({ store, backend, notifier });
+  assert.strictEqual(during.sent, 0, "followup waits until the appointment is over");
+  const after = await runFollowup({ store, backend, notifier }, new Date(Date.now() + 45 * 60_000));
+  assert.strictEqual(after.sent, 1, "followup is due after the appointment ends");
 
   // reactivation: a customer whose only visit is >30 days ago, nothing upcoming
   const old = new Date(Date.now() - 60 * 864e5).toISOString();

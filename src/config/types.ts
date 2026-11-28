@@ -42,4 +42,9 @@ export interface Config {
   channels: {
     whatsappNumberId: string;
   };
+  practitionerNotifications?: {
+    whatsappPhone: string;
+    dailyTime: string;
+    lastMinuteHours: number;
+  };
 }
