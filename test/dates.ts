@@ -76,6 +76,30 @@ async function main(): Promise<void> {
   const moved = await call("reschedule_appointment", { reference: booked.reference, date: tuesday, weekday: "Monday", time: "13:00" });
   assert.equal(moved.status, "date_mismatch");
 
+  // 9. Lookup returns local time. A 12:00 Johannesburg booking is 10:00 UTC; the model once read it
+  //    out as "10:00". It must be handed 12:00 and no raw instant to misread.
+  const lookup = await call("list_upcoming_bookings", {});
+  const mine = lookup.bookings.find((b: { reference: string }) => b.reference === booked.reference);
+  assert.ok(mine, "the booking is listed");
+  assert.equal(mine.time, "12:00");
+  assert.equal(mine.date, monday);
+  assert.equal(mine.day, "Monday");
+  assert.ok(!("startsAt" in mine), "no raw UTC instant is exposed to the model");
+  assert.equal(lookup.timeZone, "Africa/Johannesburg");
+
+  // 10. Near midnight the local date differs from the UTC date: 22:30 UTC Sunday is 00:30 Monday SAST.
+  const lateUtc = `${upcoming(0, 5)}T22:30:00.000Z`;
+  await store.createEngagement({ businessId: "meridian", customerId: customer.id, kind: "appointment", service: "Sports massage", startsAt: lateUtc, durationMin: 45, status: "confirmed", reference: "C7-LATE" });
+  const late = (await call("list_upcoming_bookings", {})).bookings.find((b: { reference: string }) => b.reference === "C7-LATE");
+  assert.equal(late.time, "00:30");
+  assert.equal(late.day, "Monday");
+  assert.equal(late.date, new Date(Date.parse(lateUtc) + 864e5).toISOString().slice(0, 10), "local date, not the UTC date");
+
+  // 11. With several bookings and no reference, the 'which one?' list is local too.
+  const pick = await call("cancel_appointment", {});
+  assert.equal(pick.status, "needs_selection");
+  assert.ok(pick.bookings.every((b: { time?: string; startsAt?: string }) => /^\d{2}:\d{2}$/.test(b.time ?? "") && b.startsAt === undefined));
+
   console.log("dates: all checks passed");
 }
 
