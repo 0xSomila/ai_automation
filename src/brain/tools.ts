@@ -3,7 +3,7 @@ import type { Config } from "../config/types";
 import type { BookingBackend } from "../booking/adapter";
 import type { Store } from "../db/types";
 import type { Pack } from "./pack";
-import { computeOpenSlots, computeCoversSlots } from "../booking/availability";
+import { computeOpenSlots, computeCoversSlots, dayStatus, bookableDatesAfter, type DayReason } from "../booking/availability";
 import { practiceTime } from "../booking/time";
 
 export interface ToolCtx {
@@ -20,11 +20,12 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
   check_availability: {
     name: "check_availability",
     description:
-      "Returns the open times for one date. Call before offering or confirming any times. For a restaurant, pass the party size. Returns the open HH:MM list, or a note if closed or full.",
+      "Returns the open times for one date. Call before offering or confirming any times. Pass the service so the whole session fits. For a restaurant, pass the party size. Returns the open HH:MM list. When a date has no times it returns a reason and the next days that do have times: offer only those, never invent times.",
     input_schema: {
       type: "object",
       properties: {
         date: { type: "string", description: "Date as YYYY-MM-DD" },
+        service: { type: "string", description: "Service the customer wants, so its length is respected" },
         party: { type: "integer", description: "Party size, for table reservations" },
       },
       required: ["date"],
@@ -86,6 +87,16 @@ const ALL_TOOLS: Record<string, Anthropic.Tool> = {
   },
 };
 
+// Plain-language cause for an empty day, so the model never has to guess "booked".
+const REASON_NOTE: Record<DayReason, string> = {
+  open: "",
+  closed: "The practice is closed that day. Offer one of nextAvailable.",
+  beyond_horizon: "That date is further ahead than bookings are taken. Offer one of nextAvailable.",
+  past_cutoff:
+    "It is too late to book that day: the remaining times have passed or fall inside the required notice. This is not a fully booked day. Offer one of nextAvailable.",
+  fully_booked: "Every time that day is taken. Offer one of nextAvailable.",
+};
+
 function toParty(raw: unknown): number {
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
   return Number.isFinite(n) && n > 0 ? n : 1;
@@ -116,21 +127,36 @@ export async function executeTool(
     const date = String(input.date ?? "").trim();
     const party = toParty(input.party);
 
-    const open = isCovers
-      ? computeCoversSlots(ctx.config, date, await ctx.store.reservationsOn(ctx.businessId, date), party)
-      : computeOpenSlots(ctx.config, date, await ctx.backend.getBusy(date, timeZone));
-
-    if (open.length === 0) {
-      return JSON.stringify({
-        date,
-        party,
-        open: [],
-        note: isCovers
-          ? "No tables for that party that day. Offer another day or the waitlist."
-          : "Closed or fully booked that day. Offer another day.",
-      });
+    if (isCovers) {
+      const open = computeCoversSlots(ctx.config, date, await ctx.store.reservationsOn(ctx.businessId, date), party);
+      if (open.length === 0) {
+        return JSON.stringify({
+          date,
+          party,
+          open: [],
+          note: "No tables for that party that day. Offer another day or the waitlist.",
+        });
+      }
+      return JSON.stringify({ date, party, open });
     }
-    return JSON.stringify({ date, party, open });
+
+    const durationMin = resolveService(ctx, String(input.service ?? ""))?.durationMin;
+    const now = new Date();
+    const status = dayStatus(ctx.config, date, await ctx.backend.getBusy(date, timeZone), now, durationMin);
+    if (status.open.length > 0) return JSON.stringify({ date, open: status.open });
+
+    // Empty day: say why, and look ahead so the model offers real times, not guesses.
+    const nextAvailable: { date: string; open: string[] }[] = [];
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+    const from = date > today ? date : today;
+    const candidates = from === date ? bookableDatesAfter(ctx.config, date, now) : [from, ...bookableDatesAfter(ctx.config, from, now)];
+    for (const d of candidates.slice(0, 10)) {
+      if (d === date) continue;
+      const day = dayStatus(ctx.config, d, await ctx.backend.getBusy(d, timeZone), now, durationMin);
+      if (day.open.length > 0) nextAvailable.push({ date: d, open: day.open.slice(0, 6) });
+      if (nextAvailable.length >= 3) break;
+    }
+    return JSON.stringify({ date, open: [], reason: status.reason, note: REASON_NOTE[status.reason], nextAvailable });
   }
 
   if (name === "book_appointment") {
@@ -175,17 +201,16 @@ export async function executeTool(
     }
 
     // Single / per-staff: calendar-backed slot booking.
+    const svc = resolveService(ctx, service);
+    const durationMin = svc?.durationMin ?? ctx.config.booking.slotStepMin;
     const busy = await ctx.backend.getBusy(date, timeZone);
-    const open = computeOpenSlots(ctx.config, date, busy);
+    const open = computeOpenSlots(ctx.config, date, busy, new Date(), durationMin);
     if (!open.includes(time)) {
       return JSON.stringify({
         status: "unavailable",
         message: "That time is not open. Call check_availability and offer a listed time.",
       });
     }
-
-    const svc = resolveService(ctx, service);
-    const durationMin = svc?.durationMin ?? ctx.config.booking.slotStepMin;
 
     const startISO = new Date(practiceTime(date, time, timeZone)).toISOString();
     const { eventId } = await ctx.backend.createEvent({
@@ -220,17 +245,16 @@ export async function executeTool(
     }
 
     // Re-validate the new slot against live availability. Never trust the model.
+    const durationMin =
+      eng.durationMin ?? resolveService(ctx, eng.service ?? "")?.durationMin ?? ctx.config.booking.slotStepMin;
     const busy = await ctx.backend.getBusy(date, timeZone);
-    const open = computeOpenSlots(ctx.config, date, busy);
+    const open = computeOpenSlots(ctx.config, date, busy, new Date(), durationMin);
     if (!open.includes(time)) {
       return JSON.stringify({
         status: "unavailable",
         message: "That new time is not open. Call check_availability and offer a listed time.",
       });
     }
-
-    const durationMin =
-      eng.durationMin ?? resolveService(ctx, eng.service ?? "")?.durationMin ?? ctx.config.booking.slotStepMin;
     const startISO = new Date(practiceTime(date, time, timeZone)).toISOString();
 
     // Book the new slot, then release the old one, then update the record.
